@@ -36,7 +36,6 @@
 //
 
 #define DEBUG_BUILD_VALIDATION_MODE ValidationMode::kFailAlways
-#define VULKAN_API_VERSION VK_API_VERSION_1_3
 
 namespace gfx {
 
@@ -235,7 +234,7 @@ void VulkanPlatform::createInstance() {
   app_info.applicationVersion = app_version;
   app_info.pEngineName = "heavydb";
   app_info.engineVersion = app_version;
-  app_info.apiVersion = VULKAN_API_VERSION;
+  app_info.apiVersion = kVulkanInstanceApiVersion;
 
   VkInstanceCreateInfo create_info = {};
   create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -511,7 +510,7 @@ bool VulkanPlatform::isDeviceSuitable(const VulkanPhysicalDevice& device,
   // This is theoretically redundant with the driver version check
   // but play it safe
   //
-  static constexpr auto min_api_version = VULKAN_API_VERSION;
+  static constexpr auto min_api_version = kMinVulkanDeviceApiVersion;
   if (device.getApiVersion() < min_api_version) {
     VLOG(1) << "  Incompatible Vulkan API version detected. Driver supports "
             << vulkan_version_to_string(device.getApiVersion()) << " but "
@@ -643,6 +642,9 @@ bool VulkanPlatform::isDeviceSuitable(const VulkanPhysicalDevice& device,
     // Vulkan 1.3 features
     auto const& vk13_features = device.getVulkan13Features();
     check_feature(vk13_features.synchronization2, "synchronization2");
+    check_feature(vk13_features.shaderDemoteToHelperInvocation,
+                  "shaderDemoteToHelperInvocation");
+    check_feature(vk13_features.maintenance4, "maintenance4");
 
     if (!all_supported) {
       return false;
@@ -706,6 +708,12 @@ DeviceContextUqPtr VulkanPlatform::createDeviceContext(const heavyai::UUID uuid,
     features_chain.add(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
                        &vk13_features);
     vk13_features.synchronization2 = VK_TRUE;
+    // SPIR-V 1.6 deprecates OpKill, so GLSL's discard is compiled to
+    // OpDemoteToHelperInvocation, and every fragment shader that discards needs this
+    vk13_features.shaderDemoteToHelperInvocation = VK_TRUE;
+    // SPIR-V 1.6 lets a compiler give a shader's workgroup size by LocalSizeId, which
+    // needs this. Vulkan 1.3 requires every device to support it.
+    vk13_features.maintenance4 = VK_TRUE;
 
     //
     // Optional extensions
