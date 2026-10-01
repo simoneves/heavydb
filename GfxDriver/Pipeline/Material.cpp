@@ -127,8 +127,8 @@ void Material::createLocalUniformBuffers() {
       auto binding = reflection.getUniformBufferBinding(uniform_buffer_name);
       auto block_size = reflection.getUniformBufferBlockSize(uniform_buffer_name);
       CHECK(binding >= 0 && block_size > 0)
-          << "Failed to create local UBOs for '" << resource_tracking_string_ << "': "
-          << "Invalid binding/size for UBO '" << uniform_buffer_name << "'";
+          << "Failed to create local UBOs for '" << resource_tracking_string_
+          << "': " << "Invalid binding/size for UBO '" << uniform_buffer_name << "'";
 
       // if we already have this binding and name, we don't need to create another one
       auto const [itr, create] =
@@ -233,6 +233,21 @@ uint32_t Material::getVertexAttributeLocation(std::string_view attr_name) const 
       "Attribute '" + std::string(attr_name) +
       "' does not exist in shader. Cannot get attribute location in Material '" +
       resource_tracking_string_ + "'");
+}
+
+void Material::validatePushConstantRange(std::string_view name,
+                                         uint32_t offset,
+                                         uint32_t num_bytes) const {
+  std::vector<const ShaderReflection*> reflections;
+  reflections.reserve(shader_caches_.size());
+  for (auto const& cache : shader_caches_) {
+    reflections.push_back(&cache->getReflection());
+  }
+  validate_push_constant_range(reflections,
+                               name,
+                               offset,
+                               num_bytes,
+                               "Material '" + resource_tracking_string_ + "'");
 }
 
 const ShaderReflection::ItemInfo& Material::getUniformBufferAttrInfo(

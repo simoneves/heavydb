@@ -25,6 +25,8 @@ void ShaderReflection::clear() {
   acceleration_structures_.clear();
   uniform_buffer_attrs_.clear();
   shader_storage_buffer_attrs_.clear();
+  push_constants_.clear();
+  push_constant_attrs_.clear();
   fragment_shader_output_locations_.clear();
 }
 
@@ -98,6 +100,15 @@ void ShaderReflection::addShaderStorageBufferAttr(std::string_view name,
       name,
       {set, binding, offset, size, array_length, array_stride},
       "Shader Storage Buffer Attr");
+}
+
+void ShaderReflection::addPushConstant(std::string_view name, int offset, int size) {
+  push_constants_.insert_unless_different(name, {-1, -1, offset, size}, "Push Constant");
+}
+
+void ShaderReflection::addPushConstantAttr(std::string_view name, int offset, int size) {
+  push_constant_attrs_.insert_unless_different(
+      name, {-1, -1, offset, size}, "Push Constant Attr");
 }
 
 void ShaderReflection::addFragmentShaderOutputLocation(int location) {
@@ -219,6 +230,17 @@ const ShaderReflection::ItemInfo& ShaderReflection::getShaderStorageBufferAttrIt
   return shader_storage_buffer_attrs_.find_or_default(name);
 }
 
+const ShaderReflection::ItemInfo& ShaderReflection::getPushConstantItemInfo(
+    std::string_view name) const {
+  // Members first. The two cannot collide, GLSL not allowing a block and one of
+  // its own members to share a name, so the order is arbitrary.
+  auto const& attr = push_constant_attrs_.find_or_default(name);
+  if (attr.offset >= 0) {
+    return attr;
+  }
+  return push_constants_.find_or_default(name);
+}
+
 const ShaderReflection::NameVector ShaderReflection::getAllUniformBufferNames() const {
   NameVector names;
   for (auto const& uniform_buffer : uniform_buffers_.the_map()) {
@@ -279,6 +301,22 @@ const ShaderReflection::NameVector ShaderReflection::getAllShaderStorageBufferAt
   return names;
 }
 
+const ShaderReflection::NameVector ShaderReflection::getAllPushConstantNames() const {
+  NameVector names;
+  for (auto const& push_constant : push_constants_.the_map()) {
+    names.emplace_back(push_constant.first);
+  }
+  return names;
+}
+
+const ShaderReflection::NameVector ShaderReflection::getAllPushConstantAttrNames() const {
+  NameVector names;
+  for (auto const& push_constant_attr : push_constant_attrs_.the_map()) {
+    names.emplace_back(push_constant_attr.first);
+  }
+  return names;
+}
+
 namespace {
 
 // ItemInfo reuses two of its fields for different things depending on the
@@ -325,6 +363,48 @@ void write_section(std::ostream& stream,
 
 }  // namespace
 
+void validate_push_constant_range(const std::vector<const ShaderReflection*>& reflections,
+                                  std::string_view name,
+                                  uint32_t offset,
+                                  uint32_t num_bytes,
+                                  std::string_view owner) {
+  // Widened so that a push near the top of the range cannot wrap and appear to fit
+  auto const push_begin = static_cast<uint64_t>(offset);
+  auto const push_end = push_begin + num_bytes;
+
+  // Every span declared under this name, for the message if none of them covers the push
+  std::string declared_spans;
+  for (auto const* reflection : reflections) {
+    auto const& info = reflection->getPushConstantItemInfo(name);
+    if (info.offset < 0) {
+      continue;
+    }
+
+    auto const declared_begin = static_cast<uint64_t>(info.offset);
+    auto const declared_end = declared_begin + info.block_or_array_size;
+    if (push_begin >= declared_begin && push_end <= declared_end) {
+      return;
+    }
+
+    if (!declared_spans.empty()) {
+      declared_spans += ", ";
+    }
+    declared_spans += std::to_string(declared_end - declared_begin) +
+                      " bytes at offset " + std::to_string(declared_begin);
+  }
+
+  RUNTIME_EX_ASSERT(!declared_spans.empty(),
+                    "Failed to find push constant '" + std::string(name) + "' in " +
+                        std::string(owner) +
+                        ". The name must be the push constant block or one of its "
+                        "members");
+
+  THROW_RUNTIME_EX("Push of " + std::to_string(num_bytes) + " bytes at offset " +
+                   std::to_string(offset) + " to '" + std::string(name) + "' in " +
+                   std::string(owner) +
+                   " falls outside what the shader declares for it: " + declared_spans);
+}
+
 void ShaderReflection::serialize(std::ostream& stream) const {
   write_section(
       stream, "vertex_attrs", vertex_attr_locations_.the_map(), kLocationAndArraySize);
@@ -347,6 +427,9 @@ void ShaderReflection::serialize(std::ostream& stream) const {
                 "shader_storage_buffer_attrs",
                 shader_storage_buffer_attrs_.the_map(),
                 kBindingAndSize);
+  write_section(stream, "push_constants", push_constants_.the_map(), kBindingAndSize);
+  write_section(
+      stream, "push_constant_attrs", push_constant_attrs_.the_map(), kBindingAndSize);
 
   // std::set iterates in order, so no explicit sort needed here
   stream << "fragment_output_locations " << fragment_shader_output_locations_.size()

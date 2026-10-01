@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <iosfwd>
 #include <set>
 #include <string>
@@ -88,6 +89,13 @@ class ShaderReflection {
                                   int size,
                                   int array_length = -1,
                                   int array_stride = -1);
+  // A stage may declare at most one push constant block, which is a Vulkan rule
+  // rather than a simplification here. The block's offset and size are the span its
+  // members occupy, which is the range a caller is allowed to push into, and the
+  // members are recorded individually so that a caller can name one.
+  void addPushConstant(std::string_view name, int offset, int size);
+  void addPushConstantAttr(std::string_view name, int offset, int size);
+
   void addFragmentShaderOutputLocation(int location);
 
   bool hasVertexAttr(std::string_view name) const;
@@ -121,6 +129,11 @@ class ShaderReflection {
   const ItemInfo& getUniformBufferAttrItemInfo(std::string_view name) const;
   const ItemInfo& getShaderStorageBufferAttrItemInfo(std::string_view name) const;
 
+  // Resolves a name against the push constant block and its members alike, so a
+  // caller may name either the block or one member of it. Returns the default
+  // ItemInfo, whose offset is -1, if the name is neither.
+  const ItemInfo& getPushConstantItemInfo(std::string_view name) const;
+
   // Writes every entry in name-sorted order, so the output is stable across runs
   // and reviewable as a diff. ShaderCompilerTest stores this form as its golden
   // expectation, so the format is load-bearing: changing it invalidates every
@@ -135,6 +148,8 @@ class ShaderReflection {
   const NameVector getAllAccelerationStructureNames() const;
   const NameVector getAllUniformBufferAttrNames() const;
   const NameVector getAllShaderStorageBufferAttrNames() const;
+  const NameVector getAllPushConstantNames() const;
+  const NameVector getAllPushConstantAttrNames() const;
 
  private:
   class NameToItemInfoMap {
@@ -173,7 +188,23 @@ class ShaderReflection {
   NameToItemInfoMap vertex_attr_locations_;
   NameToItemInfoMap uniform_buffer_attrs_;
   NameToItemInfoMap shader_storage_buffer_attrs_;
+  NameToItemInfoMap push_constants_;
+  NameToItemInfoMap push_constant_attrs_;
   std::set<int> fragment_shader_output_locations_;
 };
+
+// Throws unless at least one of `reflections`, typically the stages of one material,
+// declares `name` as its push constant block or one of that block's members and covers
+// the whole of [offset, offset + num_bytes) with it. `owner` names what the reflections
+// belong to, for the error message.
+//
+// Any one stage covering the range is enough. Names are not unique across stages: two
+// stages may each give their own block the same instance name over different spans, as
+// PolyMark's capture shaders do, and a push into either span is legitimate.
+void validate_push_constant_range(const std::vector<const ShaderReflection*>& reflections,
+                                  std::string_view name,
+                                  uint32_t offset,
+                                  uint32_t num_bytes,
+                                  std::string_view owner);
 
 }  // namespace gfx
