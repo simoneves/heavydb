@@ -1,31 +1,31 @@
 ---
 name: PR 6 shader compiler backend
-overview: Put a ShaderCompilerBackend interface between ShaderManager and GlslangWrapper, and add a Slang implementation that compiles the existing GLSL through Slang's GLSL compatibility mode for the shader families PR 0b showed are ready, selected per material and off by default. glslang stays the default and the only backend for the Marks. Reflection still comes from ShaderRedecorator reading the SPIR-V, so both backends share one reflection path and can be compared directly. Developed now; merging waits on Slang OSRB approval.
+overview: Done 2026-11-01; see "What PR 6 established". Put a ShaderCompilerBackend interface between ShaderManager and GlslangWrapper, and add a Slang implementation that compiles the existing GLSL through Slang's GLSL compatibility mode for the shader families PR 0b showed are ready, selected per material and off by default. glslang stays the default and the only backend for the Marks. Reflection still comes from ShaderRedecorator reading the SPIR-V, so both backends share one reflection path and can be compared directly. Developed now; merging waits on Slang OSRB approval.
 todos:
   - id: 6a-interface
     content: "6a: Extract ShaderCompilerBackend from GlslangWrapper's existing glslToSpirv seam, with StageSource and CompileResults moving to the interface's header. glslang only; no behaviour change, no golden moves. Done in the commit "Put a ShaderCompilerBackend interface in front of GlslangWrapper": render suite 85/85, no golden moved, be-render-tests unchanged at 441 passing"
     status: completed
   - id: 6b-build
-    content: "6b: Optional Slang dependency in CMake (ENABLE_SLANG, default OFF until OSRB), via the slang CMake package in the deps prefix. Link libslang; confirm libslang-glsl-module is found at runtime"
-    status: pending
+    content: "6b: Optional Slang dependency in CMake (ENABLE_SLANG, default OFF until OSRB), via the slang CMake package in the deps prefix. Link libslang; confirm libslang-glsl-module is found at runtime Done in "Add an optional Slang dependency, off by default". Slang's own CMake package is unusable (its targets carry the deps build machine's include path), so FindSlang.cmake follows FindGlslang. HAVE_SLANG is a PUBLIC definition of GfxDriver."
+    status: completed
   - id: 6c-slang-backend
-    content: "6c: SlangBackend implementing the interface: one global session per ShaderManager, a session with the PR 0b options, an ISlangFileSystem over Library, one module per stage from the assembled source, entry point by name and stage"
-    status: pending
+    content: "6c: SlangBackend implementing the interface: one global session per ShaderManager, a session with the PR 0b options, an ISlangFileSystem over Library, one module per stage from the assembled source, entry point by name and stage Done in "Add a Slang shader compiler backend", then reworked twice: see 6f and 6g. The global session must be created with enableGLSL, and compiles are serialized by a mutex since a global session is not thread-safe."
+    status: completed
   - id: 6d-reflection
-    content: "6d: Make ShaderRedecorator produce identical ShaderReflection from Slang's SPIR-V: undo Slang's block naming and the .data wrapping of array members, and decide what to do about resources Slang drops as unused"
-    status: pending
+    content: "6d: Make ShaderRedecorator produce identical ShaderReflection from Slang's SPIR-V: undo Slang's block naming and the .data wrapping of array members, and decide what to do about resources Slang drops as unused Done in "Reflect Slang's SPIR-V into the same ShaderReflection as glslang's". Slang SPIR-V is recognised by generator id 40. Unused resources: Slang drops them and PreserveParameters does not help for GLSL input, so this is pinned by a test, not worked around."
+    status: completed
   - id: 6e-selection
-    content: "6e: Per-material backend selection: a server/test option choosing glslang (default) or slang, and a per-library-item opt-in in the shader manifests. A material uses Slang only if the option is on and every stage has opted in"
-    status: pending
+    content: "6e: Per-material backend selection: a server/test option choosing glslang (default) or slang, and a per-library-item opt-in in the shader manifests. A material uses Slang only if the option is on and every stage has opted in Done in "Choose the shader compiler per material, glslang by default". Deviation: the option is the OMNISCI_shader_compiler_backend environment variable plus ShaderManager::setPreferredCompilerBackend, not a server option, since it is development-only until OSRB."
+    status: completed
   - id: 6f-compute
-    content: "6f: Opt in the single-stage compute shaders and prove them: ShaderCompilerTest goldens through both backends, reflection parity, and be-render-tests golden images with the option on"
-    status: pending
+    content: "6f: Opt in the single-stage compute shaders and prove them: ShaderCompilerTest goldens through both backends, reflection parity, and be-render-tests golden images with the option on Done in "Compile through a Slang compile request so GLSL workgroup sizes survive" and "Opt the single-stage compute shaders in to the Slang backend". The first be-render-tests run failed 104 tests: the module API drops GLSL local_size."
+    status: completed
   - id: 6g-multistage
-    content: "6g: Spike, then decide: how Slang assigns auto bindings across the stages of a multi-stage material, which glslang does with one shared resolver. Gates opting in any vertex+fragment family"
-    status: pending
+    content: "6g: Spike, then decide: how Slang assigns auto bindings across the stages of a multi-stage material, which glslang does with one shared resolver. Gates opting in any vertex+fragment family Done in "Compile a material's stages together in Slang, as glslang does": one compile request per material. Distinct and explicitly shared resources match glslang; implicitly shared ones do not, which bars those shaders from opting in."
+    status: completed
   - id: 6h-postprocess
-    content: "6h: Opt in the post-processing family (SMAA, accumulator passes, fullScreenTriangle) once 6g is settled, excluding SeparateMultiSample.frag until Slang's texelFetch sample-index bug is fixed"
-    status: pending
+    content: "6h: Opt in the post-processing family (SMAA, accumulator passes, fullScreenTriangle) once 6g is settled, excluding SeparateMultiSample.frag until Slang's texelFetch sample-index bug is fixed Done in "Opt the post-processing shaders in to the Slang backend", without accumulatorScale_2ndPass.frag, some of whose variants declare a block they never read."
+    status: completed
 isProject: false
 ---
 
@@ -146,6 +146,19 @@ This decides 6h's design, and is the same question PR 7 has to answer for everyt
 - **Compile time.** Slang is not obviously as fast as glslang for small shaders, and materials are compiled at render time. Measure with `GENERATE_COMPILE_STATS` on the opted-in families before 6f lands.
 - **Slang version.** The deps build pins Slang to the `vulkan-sdk-1.4.363` tag (2026.17). Any upstream fix for the `texelFetch` bug arrives with a future SDK, not independently.
 - **The two silent miscompiles found so far were found by reading output, not by tests.** Expect more; the per-family proof is the defence.
+
+## What PR 6 established (2026-11-01)
+
+All eight steps landed. Fourteen shader stages are opted in: the nine single-stage compute shaders and SMAAPassThru.vert, the three SMAA passes, fullScreenTriangle.vert and accumulatorIDPass.frag. With OMNISCI_shader_compiler_backend=slang the render suite passes and be-render-tests gives 441 passing, the same as glslang. Findings, in the order they cost something:
+
+- **Slang's module API drops GLSL's workgroup size.** loadModuleFromSourceString emits LocalSize 1 1 1 for any "layout(local_size_x = N) in", so every compute dispatch ran a fraction of its invocations: 104 be-render-tests failures, no error, and reflection identical. slangc keeps it because it compiles through a compile request with a GLSL translation unit, and so does the backend now. That API lives in slang-deprecated.h. Worth reporting upstream with the texelFetch bug, and revisiting on every Slang upgrade.
+- **Reflection parity is not enough.** It missed the workgroup size entirely; the tests now compare execution modes too. And a full be-render-tests capture keeps only the last variant of each template, so it compared a variant of accumulatorScale_2ndPass that happened to be fine. Only rerunning single failing tests against each backend exposed the bad variant. A future opt-in should be proven per failing test, not only per template.
+- **Unused resources are the real limit on what can opt in.** Slang drops a resource the entry point never reads, glslang keeps it, and the bindings after it renumber. PreserveParameters does not change that for GLSL input. Shaders whose variants select functions that skip a declared block, like accumulatorScale_2ndPass, cannot opt in. PR 7 has to settle this for every shader, either by making reflection come from declarations rather than from the SPIR-V, or by making every declared resource reachable.
+- **A material must be compiled as one program.** One compile request per material numbers bindings across its stages as glslang does. A resource shared between stages still needs an explicit binding: Slang treats each stage's copy as a separate parameter. Slang's warning 39001 is disabled because an explicitly shared binding is what it reports.
+- **Compile time.** Slang is 13 to 37 times slower than glslang on the same source: 3.9 ms against 0.3 ms for a small compute shader, 41 ms against 1.9 ms for the SMAA blending weight pass. Reusing a session saves under a tenth. DISABLED_SlangCompileTimeTest measures it. Not a problem for the opted-in shaders, which compile once per context, but it would be for Marks compiled per Vega render, and PR 7 should measure on those before switching.
+- **Matrix layout:** SLANG_MATRIX_LAYOUT_ROW_MAJOR, as PR 0b found, and a test fails if it is set to column-major.
+
+Upstream reports to file, all with reproducers in this branch's tests or the PR 0b harness: texelFetch on sampler2DMS drops the sample index; the module API drops GLSL local_size; PreserveParameters has no effect on GLSL input.
 
 ## Order
 
