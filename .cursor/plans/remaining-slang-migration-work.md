@@ -27,7 +27,7 @@ todos:
     content: "PR 5d (optional): Raise kVulkanInstanceApiVersion to Vulkan 1.4. No dependencies and nothing depends on it. No technical upside; costs the NVIDIA driver floor rising from 535 to roughly R570. Take only if something else needs 1.4"
     status: pending
   - id: backend-seam
-    content: "PR 6: Introduce a ShaderCompilerBackend interface behind ShaderManager.h:315's concrete GlslangWrapperUqPtr and add a flag-gated Slang implementation with ISlangFileSystem over Library. Needs PR 0b for scoping and OSRB to merge. Developed 2026-11-01, see pr6-shader-compiler-backend.md: fourteen stages opt in and pass be-render-tests through Slang. Merging still waits on OSRB"
+    content: "PR 6: Introduce a ShaderCompilerBackend interface behind ShaderManager.h:315's concrete GlslangWrapperUqPtr and add a flag-gated Slang implementation with ISlangFileSystem over Library. Needs PR 0b for scoping and OSRB to merge. Developed 2026-11-01, see pr6-shader-compiler-backend.md: fifteen stages opt in and pass be-render-tests through Slang. Getting the rest there is planned in all-shaders-through-slang.md. Merging still waits on OSRB"
     status: completed
   - id: slang-default
     content: "PR 7: Switch the default to Slang, delete ShaderRedecorator and ResourceLimits, populate ShaderReflection from Slang reflection, and reimplement clash diagnostics, struct-flattening names, the type whitelist, array dimensions and push constants. Needs PR 6; smaller now that PR 4b has landed. Also required by PR 5c part 3"
