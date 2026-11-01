@@ -25,7 +25,7 @@ Division of labour: the agent writes the forked script and the `common-functions
 
 Status: Tasks 1, 2 and 4 are done. Task 3 is split: the SDK summary is tracked in [pr-895-review-followups.md](pr-895-review-followups.md), and the Slang attribution remains deferred until Slang has OSRB approval.
 
-Slang history: Task 2 below says to add `slang` to the target list, but the commit that landed (`27c0a246a1`, Add Vulkan 1.4.363.0 build script fork, and adapt install_vulkan) left it out, so Slang was not built for the whole of PR 895's original review. It was restored afterwards by re-adding `slang` to the `./vulkansdk` line. Read Task 2 as the intent, not as what first landed.
+Slang history: Task 2 below says to add `slang` to the target list, but the commit that landed (`27c0a246a1`, Add Vulkan 1.4.363.0 build script fork, and adapt install_vulkan) left it out, so Slang was not built for the whole of PR 895's original review. It was restored afterwards by re-adding `slang` to the `./vulkansdk` line, in `61bc82fc65` (Add Slang build). Read Task 2 as the intent, not as what first landed.
 
 Commit hashes here are as of the rebase onto `master` that preceded the PR 895 review. They change on every rebase; find a commit by its subject, which is given alongside each hash.
 

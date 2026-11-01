@@ -3,7 +3,7 @@ name: PR 895 review follow-ups
 overview: Act on the review of PR 895 (branch simoneves_renderer_upgrade_2026 at 29f3f9c88b). Three code fixes with tests, three smaller code cleanups, a full reconciliation of the existing plan files with what the branch actually contains, the SDK licence update that no longer waits on OSRB, and a proposed split of the PR into four. Slang is being re-added to the install_vulkan target list by the user, which unblocks PR 0b, but PR 0b itself is out of scope here.
 todos:
   - id: slang-rebuild
-    content: "User: re-add slang to the install_vulkan target list and provide a build container with the rebuilt deps prefix. Gates the verification steps of every other item, and makes PR 0b possible afterwards Done: container laughing_noyce has slangc and include/slang in the prefix. The script change itself is still uncommitted in the working tree."
+    content: "User: re-add slang to the install_vulkan target list and provide a build container with the rebuilt deps prefix. Gates the verification steps of every other item, and makes PR 0b possible afterwards Done: container laughing_noyce has slangc and include/slang in the prefix. The script change landed as 61bc82fc65 (Add Slang build)."
     status: completed
   - id: fix-lost-link-error
     content: "Fix 1: a link or getIntermediate failure in stage i > 0 of glslToSpirv surfaces as a generic error on stage 0, losing the real message. Make every early return carry the failure to the whole material. Add a ShaderCompilerTest case with a second stage that parses but fails to link Done in 5edddf49f3 (Report a later stage's link failure instead of a generic error), test LinkFailureInLaterStageTest."

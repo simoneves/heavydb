@@ -3,8 +3,8 @@ name: Remaining Slang migration work
 overview: A standalone working document for the pieces of the glslang-to-Slang migration that have not yet landed, with the dependencies between them made explicit. Six remain. Four items originally filed under PR 7 needed nothing from Slang and landed separately, as did one unscheduled cleanup they turned up. The completed work is summarised only briefly, except where it established something a later PR has to reproduce; the full archaeology stays in the existing plan.
 todos:
   - id: restore-slang
-    content: "Restore slang to the ./vulkansdk target list in install_vulkan. PR 5a's plan added it, but the commit that landed left it out, so Slang was not in the deps prefix until this. Predecessor of PR 0b and PR 6. Made in the working tree, not yet committed at the time of writing; mark completed when it lands"
-    status: in_progress
+    content: "Restore slang to the ./vulkansdk target list in install_vulkan. PR 5a's plan added it, but the commit that landed left it out, so Slang was not in the deps prefix until this. Predecessor of PR 0b and PR 6. Landed as 61bc82fc65 (Add Slang build)"
+    status: completed
   - id: osrb
     content: Slang OSRB approval and attribution. External gate on merging PR 6 onward; start now, independent of all code work
     status: pending
@@ -67,7 +67,7 @@ Commit hashes are as of the rebase onto `master` that preceded the PR 895 review
 - **PR 0a** - Spiked and kept the SDK bump. The tree builds and runs on Vulkan SDK 1.4.363.0 with glslang 16.6.0. This disproved the plan's central premise: the private headers were never what pinned the SDK, so PRs 3 and 4 do not gate anything except their own cleanup.
 - **PR 1** (`183c9fd7e4`) - Replaced byte-exact SPIR-V goldens with `ShaderReflection` text goldens plus `spirv-val`. Nine `.reflect` files. This is the safety net every remaining PR is verified against.
 - **PR 2** (`22e8ab86d6`) - Hygiene: deleted `kShaderStageCount`, hardened glslang error-log scraping, collapsed the vestigial multi-set scaffolding, restored the rule of zero on `ShaderReflection`.
-- **PR 5a** - Vulkan SDK 1.4.363.0, with Slang meant to be built alongside glslang. As landed, `slang` was missing from the `./vulkansdk` target list, so Slang was not actually in the deps prefix; it was restored afterwards (the `restore-slang` item), which puts `slangc` and `slang.h` there.
+- **PR 5a** - Vulkan SDK 1.4.363.0, with Slang meant to be built alongside glslang. As landed, `slang` was missing from the `./vulkansdk` target list, so Slang was not actually in the deps prefix; it was restored afterwards in `61bc82fc65` (Add Slang build), which puts `slangc` and `slang.h` there.
 - **PR 5b** (`35c779bebc`) - Retargeted the compiler to Vulkan 1.3 / SPIR-V 1.6, split `VULKAN_API_VERSION` into instance and device-minimum constants, fixed a `VulkanPhysicalDevice` gate that tested 1.2 while chaining 1.3 structs.
 - **PR 5c parts 1 and 2** (`acbd16b1f6`) - Deleted the dead `build_info.h` include and swapped glslang's disassembler for the SPIRV-Tools one. The copy block in `scripts/common-functions.sh` is down from 16 files to 14.
 - **PR 3** (`c16ae41c47`) - Deleted `TShaderIRUtils` and moved subroutine resolution to a textual pass in `ShaderManager`, run before glslang sees the source. Took the copy block from 14 files to 13.
@@ -95,7 +95,7 @@ Each was filed under PR 7 but needs nothing from Slang, and each is better as it
 
 ```mermaid
 flowchart TD
-    Slang["Restore Slang to the deps build (in progress)"]
+    Slang["Restore Slang to the deps build (done, 61bc82fc65)"]
     OSRB["Slang OSRB approval (external, start now)"]
     PR0b["PR 0b: slangc -allow-glsl spike"]
     PR5c3["PR 5c part 3: delete the 13-header copy block"]
