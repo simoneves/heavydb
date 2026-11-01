@@ -5,7 +5,6 @@
 
 //<extensions>
 #extension GL_EXT_buffer_reference2 : require
-#extension GL_ARB_shader_draw_parameters : require
 //</extensions>
 //<includes>
 #include "Marks/typeDefines.glsl"
@@ -96,7 +95,7 @@ void main() {
   float py = float(gety(projecty(y)));
 #endif
 #if useSSBO == 1
-  int iSSBOIndex = gl_DrawIDARB + uSSBOIndexBase;
+  int iSSBOIndex = gl_DrawID + uSSBOIndexBase;
   gl_Position =
       vec4(NDCtoScreen(
                px * uViewProjMatrix[0][0] + uViewProjMatrix[2][0],

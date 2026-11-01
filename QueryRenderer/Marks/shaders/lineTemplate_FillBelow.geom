@@ -3,9 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-//<extensions>
-#extension GL_ARB_shader_draw_parameters : require
-//</extensions>
 // GEOMETRY SHADER
 
 // Alternative version of lineTemplate.geom for 1D cross-section terrain renders

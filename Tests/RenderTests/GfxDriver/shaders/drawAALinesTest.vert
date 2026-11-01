@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#extension GL_ARB_shader_draw_parameters : require
 
 in vec2 in_position;
 in vec3 in_color;
