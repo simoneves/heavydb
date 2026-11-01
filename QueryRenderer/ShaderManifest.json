@@ -208,7 +208,8 @@
       "file_path": "./Rendering/shaders",
       "internal_path": "Rendering/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "accumulationCompositePeer.frag",
@@ -222,28 +223,32 @@
       "file_path": "./Rendering/shaders",
       "internal_path": "Rendering/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "SMAAEdgeDetection.frag",
       "file_path": "./Rendering/shaders",
       "internal_path": "Rendering/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "SMAANeighborhoodBlending.frag",
       "file_path": "./Rendering/shaders",
       "internal_path": "Rendering/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "SMAAPassThru.vert",
       "file_path": "./Rendering/shaders",
       "internal_path": "Rendering/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "SeparateMultiSample.frag",
@@ -288,7 +293,8 @@
       "file_path": "./Rendering/shaders",
       "internal_path": "Rendering/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "output_ID.glsl",
