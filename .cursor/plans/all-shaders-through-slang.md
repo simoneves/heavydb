@@ -15,7 +15,10 @@ todos:
     content: "Audit every multi-stage material for a resource shared between stages without an explicit binding, and give each one an explicit binding. Glslang-neutral"
     status: pending
   - id: slang-syntax-spike
-    content: "Spike: can one Mark stage stay GLSL text with only its buffer device address, geometry I/O or mesh I/O written in Slang syntax, compiled through the existing builder? Decides whether the not-modelled features are a local change or a conversion to Slang modules"
+    content: "Done 2026-11-01: yes. Slang syntax for buffer device addresses, geometry entry points and mesh entry points compiles inside a GLSL translation unit through the existing compile request; Slang defines __SLANG__ there, so one template can carry both forms and still compile with glslang; and a Slang-syntax geometry stage links by location with GLSL vertex and fragment stages in one material. Local edits, not a conversion to Slang modules"
+    status: completed
+  - id: dual-source-marks
+    content: "Rewrite the not-modelled parts of the Marks behind #ifdef __SLANG__: slab reads in slabAddressTable.glsl as Slang pointers, the four geometry templates and two mesh templates as Slang-syntax entry points with their helpers taking the output stream or arrays as parameters, and GlslStructBuilder emitting Slang structs with [[vk::location]] for those stages. Prove one family end to end first"
     status: pending
   - id: coverage
     content: "Tests for the production stages nothing exercises: windbarbs, tableFunctionTest, shadingMain.vert, every scale variant (unique artifact names per compile), and multiGpuCompositeIDs where a second GPU is available"
@@ -107,7 +110,19 @@ PR 0b confirmed each of these on a minimal shader: no GLSL-level workaround exis
 - **Geometry shader I/O** (`layout(lines_adjacency) in`, `layout(triangle_strip, max_vertices = N) out`): four production geometry shaders.
 - **Mesh and task shader I/O** (`layout(..., max_primitives = N) out`, `taskPayloadSharedEXT`): two production mesh shaders.
 
-**Spike:** can a stage stay GLSL text, assembled by the existing builder, with only these constructs written in Slang syntax? Slang accepts GLSL syntax inside Slang modules when `allowGLSLSyntax` is set, but whether it accepts the reverse, Slang syntax in a GLSL translation unit, is untested. If it does, these become local edits to `slabAddressTable.glsl` and the geometry and mesh templates. If not, those templates become Slang modules, the builder has to splice into them, and this is PR 8 proper. The answer sizes most of what is left.
+**Spike result (2026-11-01): yes, as local edits.** Through a compile request with a GLSL translation unit, exactly as the backend compiles:
+- **Buffer device addresses** in Slang syntax, `((double*)addr)[i]` or `Ptr<double>(addr)[i]`, compile alongside the GLSL uniform blocks and built-ins, and produce a real device-address load: `OpConvertUToPtr` to a `PhysicalStorageBuffer` pointer under the `PhysicalStorageBuffer64` memory model, as glslang's `buffer_reference` does.
+- **A geometry stage** with a Slang-syntax entry point (`[maxvertexcount(8)]`, a `lineadj` input array, an `inout TriangleStream<T>`) and GLSL types and uniform blocks gives `InputLinesAdjacency`, `OutputVertices 8` and `OutputTriangleStrip`, and passes spirv-val.
+- **A mesh stage** with a Slang-syntax entry point (`[outputtopology("point")]`, `[numthreads(32, 1, 1)]`, `out vertices` and `out indices` arrays) gives `OutputPoints`, `OutputVertices 32`, `OutputPrimitives 32` and `LocalSize 32 1 1`.
+- **Slang defines `__SLANG__`** in a GLSL translation unit, so a template can carry both forms. A file with the slab read behind `#ifdef __SLANG__` compiled through Slang using pointers, and through `glslangValidator` using `buffer_reference`. Both backends keep working from one source while both exist.
+- **Mixed materials link by location.** A GLSL vertex stage writing locations 0 and 1, a Slang-syntax geometry stage reading them through `[[vk::location(N)]]` struct fields and writing location 0, and a GLSL fragment stage reading location 0, compiled as one material, line up exactly.
+
+What it costs, not yet measured on a real template:
+- The geometry and mesh templates' entry points and I/O change shape, not just their declarations. `gl_in[i]`, `EmitVertex()` and `gl_MeshVerticesEXT[i]` become struct parameters, `stream.Append` and output arrays, so helpers that emit vertices today have to take the stream or arrays as parameters. That is a rewrite of each template's main and its emitting helpers, behind `#ifdef __SLANG__`, with the GLSL form kept beside it until glslang goes.
+- `GlslStructBuilder` has to emit Slang structs with `[[vk::location(N)]]` fields for those stages, alongside the GLSL interface blocks it emits now.
+- Nothing here has rendered: the spike compiled and linked minimal shaders. The first family converted is the real proof, and point (with its mesh template) or line (with its geometry templates) is the place to start.
+
+The original question, kept for the record: Slang accepts GLSL syntax inside Slang modules when `allowGLSLSyntax` is set, but whether it accepts the reverse, Slang syntax in a GLSL translation unit, is untested. If it does, these become local edits to `slabAddressTable.glsl` and the geometry and mesh templates. If not, those templates become Slang modules, the builder has to splice into them, and this is PR 8 proper. The answer sizes most of what is left.
 
 ## 4. Slang bugs
 
