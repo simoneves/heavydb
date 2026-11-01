@@ -3,8 +3,8 @@ name: PR 6 shader compiler backend
 overview: Put a ShaderCompilerBackend interface between ShaderManager and GlslangWrapper, and add a Slang implementation that compiles the existing GLSL through Slang's GLSL compatibility mode for the shader families PR 0b showed are ready, selected per material and off by default. glslang stays the default and the only backend for the Marks. Reflection still comes from ShaderRedecorator reading the SPIR-V, so both backends share one reflection path and can be compared directly. Developed now; merging waits on Slang OSRB approval.
 todos:
   - id: 6a-interface
-    content: "6a: Extract ShaderCompilerBackend from GlslangWrapper's existing glslToSpirv seam, with StageSource and CompileResults moving to the interface's header. glslang only; no behaviour change, no golden moves"
-    status: pending
+    content: "6a: Extract ShaderCompilerBackend from GlslangWrapper's existing glslToSpirv seam, with StageSource and CompileResults moving to the interface's header. glslang only; no behaviour change, no golden moves. Done in the commit "Put a ShaderCompilerBackend interface in front of GlslangWrapper": render suite 85/85, no golden moved, be-render-tests unchanged at 441 passing"
+    status: completed
   - id: 6b-build
     content: "6b: Optional Slang dependency in CMake (ENABLE_SLANG, default OFF until OSRB), via the slang CMake package in the deps prefix. Link libslang; confirm libslang-glsl-module is found at runtime"
     status: pending
