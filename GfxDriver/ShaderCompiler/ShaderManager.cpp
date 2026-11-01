@@ -652,16 +652,54 @@ std::string preceding_identifier(const std::string& code_str, size_t pos) {
   return code_str.substr(pos, end - pos);
 }
 
+// Whether the parameter list opening at `pos` is followed by a body, as opposed to
+// the `;` that ends a prototype. The first `{` or `;` after the `(` decides it, since
+// a parameter list holds neither. Comments are skipped, and so are preprocessor
+// lines, because a list may carry directives: quantitativeScaleTemplate.vert picks
+// the type of the last parameter with an #if, and in one case leaves the body on the
+// far side of the #endif.
+bool opens_function_body(const std::string& code_str, size_t pos) {
+  bool at_line_start = false;
+  while (pos < code_str.size()) {
+    auto const c = code_str[pos];
+    if (c == '/' && pos + 1 < code_str.size() && code_str[pos + 1] == '/') {
+      pos = code_str.find('\n', pos);
+      continue;  // lands on the newline, which starts the next line
+    }
+    if (c == '/' && pos + 1 < code_str.size() && code_str[pos + 1] == '*') {
+      auto const end = code_str.find("*/", pos + 2);
+      pos = end == std::string::npos ? end : end + 2;
+      continue;
+    }
+    if (c == '#' && at_line_start) {
+      pos = code_str.find('\n', pos);
+      continue;
+    }
+    if (c == '{' || c == ';') {
+      return c == '{';
+    }
+    if (c == '\n') {
+      at_line_start = true;
+    } else if (c != ' ' && c != '\t' && c != '\r') {
+      at_line_start = false;
+    }
+    ++pos;
+  }
+  return false;
+}
+
 // Every place `func_name` is named and then opens an argument or parameter list.
 //
-// A definition names its return type immediately before the function name and
-// nothing else does, bar a `return`. That is the whole test. Neither the parameter
-// list nor what follows it can be relied on, because a list may carry preprocessor
-// directives: quantitativeScaleTemplate.vert picks the type of the last parameter
-// with an #if, and in one case leaves the body on the far side of the #endif.
+// A declaration names its return type immediately before the function name and
+// nothing else does, bar a `return`. Of declarations, a definition is the one with a
+// body. This works on the source as written, before preprocessing, so a function
+// whose body comes from a macro is taken for a prototype, and one whose declaration
+// a macro hides is taken for a call.
+enum class ReferenceKind { kCall, kPrototype, kDefinition };
+
 struct FunctionReference {
   size_t position;
-  bool is_definition;
+  ReferenceKind kind;
 };
 
 std::vector<FunctionReference> find_function_references(const std::string& code_str,
@@ -684,17 +722,22 @@ std::vector<FunctionReference> find_function_references(const std::string& code_
       continue;  // named but not called, so nothing to retarget
     }
     auto const preceding = preceding_identifier(code_str, pos);
-    references.push_back(
-        {pos, !preceding.empty() && kNotATypeName.count(preceding) == 0});
+    auto kind = ReferenceKind::kCall;
+    if (!preceding.empty() && kNotATypeName.count(preceding) == 0) {
+      kind = opens_function_body(code_str, after + 1) ? ReferenceKind::kDefinition
+                                                      : ReferenceKind::kPrototype;
+    }
+    references.push_back({pos, kind});
   }
   return references;
 }
 
 bool has_function_definition(const std::string& code_str, const std::string& func_name) {
   auto const references = find_function_references(code_str, func_name);
-  return std::any_of(references.begin(),
-                     references.end(),
-                     [](const FunctionReference& ref) { return ref.is_definition; });
+  return std::any_of(
+      references.begin(), references.end(), [](const FunctionReference& ref) {
+        return ref.kind == ReferenceKind::kDefinition;
+      });
 }
 
 str_itr_range get_function_bounds(std::string& code_str, const std::string& func_name) {
@@ -733,7 +776,7 @@ str_itr_range get_function_bounds(std::string& code_str, const std::string& func
   return str_itr_range(signature_range.begin(), last_itr);
 }
 
-// Finds every call to `func_name`, leaving its own definition alone so that
+// Finds every call to `func_name`, leaving its own declarations alone so that
 // retargeting the calls leaves the definition behind. glslang drops it during dead
 // code elimination once nothing reaches it, which is what the AST pass this replaced
 // relied on too.
@@ -741,7 +784,7 @@ std::vector<size_t> find_call_sites(const std::string& code_str,
                                     const std::string& func_name) {
   std::vector<size_t> call_positions;
   for (auto const& reference : find_function_references(code_str, func_name)) {
-    if (!reference.is_definition) {
+    if (reference.kind == ReferenceKind::kCall) {
       call_positions.push_back(reference.position);
     }
   }

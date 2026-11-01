@@ -783,6 +783,54 @@ TEST_F(GeneralShaderCompilerTest, SubroutineSwapTest) {
   EXPECT_NE(glsl.find("float subroutineB(float x)"), std::string::npos) << glsl;
 }
 
+TEST_F(GeneralShaderCompilerTest, SubroutinePrototypeTest) {
+  // A binding may only target a function with a body. A prototype alone names its
+  // return type just as a definition does, so a test that looked no further would
+  // accept it, retarget the call, and leave the build to fail at link time with no
+  // mention of the binding.
+  auto const build = [this](const std::string& target_name, bool is_required) {
+    auto builder = this->shaderMgr->createBuilder(
+        "ShaderCompilerTests/subroutinePrototypeTest.vert");
+    EXPECT_NE(builder, nullptr);
+    builder->addSubroutineBinding("subroutineBase", target_name, is_required);
+    ShaderManager::BuilderUqPtrVector builders;
+    builders.push_back(std::move(builder));
+    return this->shaderMgr->createCacheVector(std::move(builders));
+  };
+
+  // Required, to a function that is only declared
+  try {
+    build("subroutineProto", true);
+    FAIL() << "Expected a required binding to a prototype to throw";
+  } catch (const std::exception& e) {
+    EXPECT_NE(std::string(e.what()).find(
+                  "Failed to rebind required shader function 'subroutineProto'"),
+              std::string::npos)
+        << e.what();
+  }
+
+  // Optional, to a function that is only declared: the call is left alone
+  {
+    ShaderCacheShPtrVector caches;
+    ASSERT_NO_THROW(caches = build("subroutineProto", false));
+    ASSERT_EQ(caches.size(), size_t(1));
+    auto const& glsl = caches[0]->getGlsl();
+    EXPECT_NE(glsl.find("value = subroutineBase(1.0)"), std::string::npos) << glsl;
+  }
+
+  // Declared before the call and defined after it, and defined with a parameter list
+  // the preprocessor splits. Both have bodies, so both bind.
+  for (auto const* target_name : {"subroutineForward", "subroutineSplit"}) {
+    ShaderCacheShPtrVector caches;
+    ASSERT_NO_THROW(caches = build(target_name, true)) << target_name;
+    ASSERT_EQ(caches.size(), size_t(1));
+    auto const& glsl = caches[0]->getGlsl();
+    EXPECT_NE(glsl.find(std::string("value = ") + target_name + "(1.0)"),
+              std::string::npos)
+        << glsl;
+  }
+}
+
 }  // namespace ShaderCompilerTests
 
 int main(int argc, char* argv[]) {
