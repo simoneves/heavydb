@@ -755,6 +755,34 @@ TEST_F(GeneralShaderCompilerTest, PushConstantSharedNameTest) {
   EXPECT_THROW(validate("no_such_push_constant", 0, 4), std::runtime_error);
 }
 
+TEST_F(GeneralShaderCompilerTest, SubroutineSwapTest) {
+  // Bind subroutineA to subroutineB and subroutineB to subroutineA. Each call must be
+  // retargeted exactly once. Applying the bindings one after another instead would
+  // rewrite the calls the first binding produced along with the original ones, leaving
+  // every call aimed at the same function, whichever order the map happened to iterate
+  // in. A swap is used rather than a chain because a chain goes wrong only in one of
+  // its two orders, and so could pass by luck.
+  auto builder =
+      this->shaderMgr->createBuilder("ShaderCompilerTests/subroutineSwapTest.vert");
+  ASSERT_NE(builder, nullptr);
+  builder->addSubroutineBinding("subroutineA", "subroutineB", true);
+  builder->addSubroutineBinding("subroutineB", "subroutineA", true);
+
+  ShaderManager::BuilderUqPtrVector builders;
+  builders.push_back(std::move(builder));
+  ShaderCacheShPtrVector caches;
+  ASSERT_NO_THROW(caches = this->shaderMgr->createCacheVector(std::move(builders)));
+  ASSERT_EQ(caches.size(), size_t(1));
+
+  auto const& glsl = caches[0]->getGlsl();
+  EXPECT_NE(glsl.find("first = subroutineB(1.0)"), std::string::npos) << glsl;
+  EXPECT_NE(glsl.find("second = subroutineA(2.0)"), std::string::npos) << glsl;
+
+  // The definitions themselves are left exactly as declared
+  EXPECT_NE(glsl.find("float subroutineA(float x)"), std::string::npos) << glsl;
+  EXPECT_NE(glsl.find("float subroutineB(float x)"), std::string::npos) << glsl;
+}
+
 }  // namespace ShaderCompilerTests
 
 int main(int argc, char* argv[]) {

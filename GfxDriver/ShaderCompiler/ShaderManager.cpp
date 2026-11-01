@@ -748,16 +748,6 @@ std::vector<size_t> find_call_sites(const std::string& code_str,
   return call_positions;
 }
 
-void replace_call_sites(std::string& code_str,
-                        const std::vector<size_t>& call_positions,
-                        size_t call_name_length,
-                        const std::string& target_name) {
-  // Back to front, so each replacement leaves the earlier offsets valid
-  for (auto itr = call_positions.rbegin(); itr != call_positions.rend(); ++itr) {
-    code_str.replace(*itr, call_name_length, target_name);
-  }
-}
-
 // TODO: GLSL version constant. See also spirv-opt and spirv-cross usages
 // TODO: string_view all the things
 constexpr char spirv_shader_header[] = R"(#version 460 core
@@ -981,6 +971,19 @@ void ShaderManager::rebindSubroutineCalls(Builder& builder,
                        });
   };
 
+  // Every binding is resolved against the source as assembled, and only then are any
+  // calls rewritten. Rewriting as each binding is resolved would let one binding see
+  // calls another had just produced: given A -> B and B -> A, calls to A would become
+  // calls to B and then calls back to A, or the other way round, depending only on the
+  // map's iteration order. The AST pass this replaced looked each call up once, so a
+  // call is retargeted at most once here too.
+  struct CallEdit {
+    size_t position;
+    size_t length;
+    const std::string* target_name;
+  };
+  std::vector<CallEdit> edits;
+
   for (auto const& [call_name, binding] : rebind_map) {
     auto const& [target_name, is_required] = binding;
 
@@ -1000,7 +1003,18 @@ void ShaderManager::rebindSubroutineCalls(Builder& builder,
       continue;
     }
 
-    replace_call_sites(final_glsl, call_positions, call_name.size(), target_name);
+    for (auto const position : call_positions) {
+      edits.push_back({position, call_name.size(), &target_name});
+    }
+  }
+
+  // Back to front, so each replacement leaves the earlier offsets valid. No two edits
+  // overlap, each starting a distinct whole identifier.
+  std::sort(edits.begin(), edits.end(), [](const CallEdit& lhs, const CallEdit& rhs) {
+    return lhs.position > rhs.position;
+  });
+  for (auto const& edit : edits) {
+    final_glsl.replace(edit.position, edit.length, *edit.target_name);
   }
 }
 
