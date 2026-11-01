@@ -14,6 +14,7 @@
 #include <string_view>
 
 #include <slang-com-ptr.h>
+#include <slang-deprecated.h>
 #include <slang.h>
 
 #include "GfxDriver/RenderError.h"
@@ -55,14 +56,6 @@ SlangStage to_slang_stage(ShaderStage stage) {
       return SLANG_STAGE_AMPLIFICATION;
   }
   return SLANG_STAGE_NONE;
-}
-
-std::string blob_to_string(ISlangBlob* blob) {
-  if (blob == nullptr) {
-    return {};
-  }
-  return std::string(static_cast<const char*>(blob->getBufferPointer()),
-                     blob->getBufferSize());
 }
 
 bool same_uuid(const SlangUUID& lhs, const SlangUUID& rhs) {
@@ -216,77 +209,55 @@ ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
     return results;
   }
 
+  // Each stage is compiled through a compile request with a GLSL translation unit,
+  // which is what slangc does, rather than through the newer module API
+  // (loadModuleFromSourceString). The module API loses GLSL's workgroup size
+  // declaration, layout(local_size_x = N) in, and emits LocalSize 1 1 1 instead, so
+  // every compute dispatch runs a fraction of its invocations and renders wrong without
+  // any error. The compile request keeps it. It is declared in slang-deprecated.h, so
+  // revisit this if a Slang upgrade drops it or fixes the module API.
   for (size_t i = 0; i < stages.size(); ++i) {
     auto const& stage = stages[i];
-    auto const describe = [&stage](std::string_view what, ISlangBlob* diagnostics) {
-      return std::string(what) + " for shader \"" + stage.pretty_name + "\":\n" +
-             blob_to_string(diagnostics);
-    };
-    // Warnings matter here: narrowing a double literal to float, for one, was only a
-    // warning, so log them rather than let a successful compile hide them
-    auto const log_warnings = [&stage](ISlangBlob* diagnostics) {
-      if (diagnostics != nullptr && diagnostics->getBufferSize() > 0) {
-        LOG(WARNING) << "Slang diagnostics for shader \"" << stage.pretty_name << "\":\n"
-                     << blob_to_string(diagnostics);
-      }
-    };
 
-    // The path only labels diagnostics; allowGLSLSyntax is what admits the GLSL
-    auto const module_name = "stage" + std::to_string(i);
-    Slang::ComPtr<slang::IBlob> diagnostics;
-    Slang::ComPtr<slang::IModule> module(
-        session->loadModuleFromSourceString(module_name.c_str(),
-                                            stage.pretty_name.c_str(),
-                                            stage.source.c_str(),
-                                            diagnostics.writeRef()));
-    if (!module) {
-      fail_stage(i, describe("Slang failed to compile", diagnostics));
+    Slang::ComPtr<slang::ICompileRequest> request;
+    if (SLANG_FAILED(session->createCompileRequest(request.writeRef()))) {
+      fail_stage(i,
+                 "Failed to create a Slang compile request for shader \"" +
+                     stage.pretty_name + "\"");
       return results;
     }
-    log_warnings(diagnostics);
-
+    auto const translation_unit = request->addTranslationUnit(
+        SLANG_SOURCE_LANGUAGE_GLSL, ("stage" + std::to_string(i)).c_str());
+    request->addTranslationUnitSourceString(
+        translation_unit, stage.pretty_name.c_str(), stage.source.c_str());
     auto const entry_point_name =
         stage.entry_point.empty() ? std::string("main") : stage.entry_point;
-    Slang::ComPtr<slang::IEntryPoint> entry_point;
-    diagnostics = nullptr;
-    if (SLANG_FAILED(module->findAndCheckEntryPoint(entry_point_name.c_str(),
-                                                    to_slang_stage(stage.shader_stage),
-                                                    entry_point.writeRef(),
-                                                    diagnostics.writeRef()))) {
-      fail_stage(
-          i,
-          describe("Slang found no entry point '" + entry_point_name + "'", diagnostics));
+    auto const entry_point = request->addEntryPoint(
+        translation_unit, entry_point_name.c_str(), to_slang_stage(stage.shader_stage));
+
+    auto const compiled = request->compile();
+    std::string const diagnostics =
+        request->getDiagnosticOutput() ? request->getDiagnosticOutput() : "";
+    if (SLANG_FAILED(compiled)) {
+      fail_stage(i,
+                 "Slang failed to compile shader \"" + stage.pretty_name + "\":\n" +
+                     diagnostics);
       return results;
     }
-
-    std::array<slang::IComponentType*, 2> components{module.get(), entry_point.get()};
-    Slang::ComPtr<slang::IComponentType> composite;
-    diagnostics = nullptr;
-    if (SLANG_FAILED(session->createCompositeComponentType(components.data(),
-                                                           components.size(),
-                                                           composite.writeRef(),
-                                                           diagnostics.writeRef()))) {
-      fail_stage(i, describe("Slang failed to compose", diagnostics));
-      return results;
+    // Warnings matter here: narrowing a double literal to float, for one, was only a
+    // warning, so log them rather than let a successful compile hide them
+    if (!diagnostics.empty()) {
+      LOG(WARNING) << "Slang diagnostics for shader \"" << stage.pretty_name << "\":\n"
+                   << diagnostics;
     }
 
-    Slang::ComPtr<slang::IComponentType> linked;
-    diagnostics = nullptr;
-    if (SLANG_FAILED(composite->link(linked.writeRef(), diagnostics.writeRef()))) {
-      fail_stage(i, describe("Slang failed to link", diagnostics));
-      return results;
-    }
-
-    Slang::ComPtr<slang::IBlob> code;
-    diagnostics = nullptr;
-    if (SLANG_FAILED(
-            linked->getEntryPointCode(0, 0, code.writeRef(), diagnostics.writeRef())) ||
+    Slang::ComPtr<ISlangBlob> code;
+    if (SLANG_FAILED(request->getEntryPointCodeBlob(entry_point, 0, code.writeRef())) ||
         !code || code->getBufferSize() == 0 ||
         code->getBufferSize() % sizeof(uint32_t) != 0) {
-      fail_stage(i, describe("Slang failed to generate SPIR-V", diagnostics));
+      fail_stage(i, "Slang generated no SPIR-V for shader \"" + stage.pretty_name + "\"");
       return results;
     }
-    log_warnings(diagnostics);
 
     auto& spirv = results.stages[i].first;
     spirv.resize(code->getBufferSize() / sizeof(uint32_t));

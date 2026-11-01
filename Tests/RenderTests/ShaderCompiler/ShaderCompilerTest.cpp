@@ -5,7 +5,9 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -118,6 +120,31 @@ std::pair<bool, std::string> validate_spirv(const spirv_t& spirv) {
   options.SetScalarBlockLayout(true);
 
   return {tools.Validate(spirv.data(), spirv.size(), options), messages};
+}
+
+// The entry point and execution mode lines of a module's disassembly: what a module
+// tells the pipeline about itself beyond its resources, such as a compute shader's
+// workgroup size, which no ShaderReflection records
+std::string execution_modes(const spirv_t& spirv) {
+  spvtools::SpirvTools tools(spirv_target_env_for(spirv));
+  std::string text;
+  tools.Disassemble(spirv, &text, SPV_BINARY_TO_TEXT_OPTION_NONE);
+  std::istringstream lines(text);
+  std::string line, modes;
+  while (std::getline(lines, line)) {
+    auto const at = line.find("OpExecutionMode");
+    if (at != std::string::npos) {
+      // Drop the entry point's result id, which differs between compilers for nothing
+      auto mode = line.substr(at);
+      auto const id = mode.find(" %");
+      auto const after_id = mode.find(' ', id + 2);
+      if (id != std::string::npos && after_id != std::string::npos) {
+        mode.erase(id, after_id - id);
+      }
+      modes += mode + "\n";
+    }
+  }
+  return modes;
 }
 
 std::string reflection_to_string(const ShaderReflection& reflection) {
@@ -308,6 +335,9 @@ class ShaderCompilerTest : public GTEST_BASE {
     auto const [spirv_valid, validation_messages] = validate_spirv(spirv);
     EXPECT_TRUE(spirv_valid) << "spirv-val rejected Slang's " << testName << ":\n"
                              << validation_messages;
+
+    // Reflection says nothing about execution modes, so compare those separately
+    EXPECT_EQ(execution_modes(caches[0]->getSpirv()), execution_modes(spirv)) << testName;
 
     ShaderRedecorator redecorator(testName);
     ShaderReflection reflection;
@@ -945,6 +975,11 @@ TEST_F(GeneralShaderCompilerTest, SlangBackendCompileTest) {
     ASSERT_FALSE(results.stages[0].first.empty()) << results.material_error;
     auto const [valid, messages] = validate_spirv(results.stages[0].first);
     EXPECT_TRUE(valid) << messages;
+
+    // The workgroup size is declared as a GLSL layout qualifier on "in", which
+    // Slang's module API ignores, leaving every dispatch a thirty-second the size
+    auto const slang_modes = execution_modes(results.stages[0].first);
+    EXPECT_NE(slang_modes.find("LocalSize 32 1 1"), std::string::npos) << slang_modes;
   }
 
   // An include has to be served from the Library, since the assembled source names
@@ -1025,7 +1060,7 @@ std::string reflect_with(ShaderCompilerBackend& backend,
   ShaderRedecorator redecorator(name);
   ShaderReflection reflection;
   redecorator.redecorate(results.stages[0].first, reflection, name);
-  return reflection_to_string(reflection);
+  return reflection_to_string(reflection) + execution_modes(results.stages[0].first);
 }
 
 TEST_F(GeneralShaderCompilerTest, SlangReflectionParityTest) {
@@ -1049,13 +1084,17 @@ struct Stats {
 layout(std430, binding = 0) uniform ARRAY_UBO {
   vec4 colors[3];
   float scalar;
+  // Slang names matrix layouts the other way round from GLSL, so a wrong setting moves
+  // this matrix's column stride and every member after it
+  mat3x2 transform;
+  float after_transform;
 };
 layout(std430, binding = 1) buffer ARRAY_SSBO {
   Tile tiles[4];
   Stats batch_stats[2][5];
 };
 void main() {
-  tiles[1].x = int(colors[2].x + scalar);
+  tiles[1].x = int(colors[2].x + scalar + transform[2][1] + after_transform);
   batch_stats[1][3].max_count = 7u;
 }
 )glsl";
@@ -1165,6 +1204,54 @@ TEST_F(GeneralShaderCompilerTest, SlangEnvironmentSelectionTest) {
   EXPECT_EQ(preferred_with("nonsense"), ShaderCompilerBackendType::kGlslang);
 
   preferred_with(original ? saved.c_str() : nullptr);
+}
+
+// A benchmark rather than a test, so disabled: run it with
+// --gtest_also_run_disabled_tests --gtest_filter=*SlangCompileTime* to compare the cost
+// of compiling the same assembled GLSL through each backend. Materials are compiled at
+// render time, so this matters before opting shaders in.
+TEST_F(GeneralShaderCompilerTest, DISABLED_SlangCompileTimeTest) {
+  GlslangWrapper glslang(this->shaderMgr->getLibrary());
+  SlangBackend slang(this->shaderMgr->getLibrary());
+  constexpr int kRepeats = 20;
+  std::vector<std::pair<std::string, ShaderCacheShPtr>> shaders;
+  for (auto const* name : {"Rendering/clearQueryOutputBuffer.comp",
+                           "ShaderCompilerTests/slangSelectionTest.vert"}) {
+    shaders.emplace_back(
+        name, this->shaderMgr->createCache(this->shaderMgr->createBuilder(name)));
+  }
+  // A large shader as the renderer really assembles it, from its saved builder
+  {
+    ShaderManager::BuilderUqPtrVector builders;
+    builders.push_back(deserialize_builder(
+        tests_path + "Renderer/Inputs/SMAABlendingWeightCalculation.frag.builder",
+        *this->shaderMgr));
+    shaders.emplace_back("SMAABlendingWeightCalculation.frag",
+                         this->shaderMgr->createCacheVector(std::move(builders))[0]);
+  }
+  for (auto const& [name, cache] : shaders) {
+    ASSERT_NE(cache, nullptr) << name;
+    std::vector<ShaderCompilerBackend::StageSource> const stages{
+        {name,
+         cache->getGlsl(),
+         cache->getEntryPoint().empty() ? "main" : cache->getEntryPoint(),
+         cache->getShaderStage()}};
+    auto const time = [&stages](ShaderCompilerBackend& backend) {
+      auto const start = std::chrono::steady_clock::now();
+      for (int i = 0; i < kRepeats; ++i) {
+        auto const results = backend.compileMaterial(stages);
+        EXPECT_FALSE(results.stages[0].first.empty()) << results.material_error;
+      }
+      return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() -
+                                                       start)
+                 .count() /
+             kRepeats;
+    };
+    auto const glslang_ms = time(glslang);
+    auto const slang_ms = time(slang);
+    std::cout << name << ": glslang " << glslang_ms << " ms, Slang " << slang_ms
+              << " ms per compile" << std::endl;
+  }
 }
 
 #endif  // HAVE_SLANG
