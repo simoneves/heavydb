@@ -163,7 +163,7 @@ void write_spirv_artifacts(const std::string& glsl_string,
         // from a failing run can be diffed directly against a .reflect file.
         // The SPIRV-Cross dump below is complementary: it carries member types
         // and strides, which ShaderReflection does not model.
-        std::string filename = pathed_name + ".reflection";
+        std::string filename = pathed_name + ".reflect";
         write_to_file(filename, false, [&](auto& file) { reflection.serialize(file); });
       }
 

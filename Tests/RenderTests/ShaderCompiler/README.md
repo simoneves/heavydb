@@ -23,4 +23,4 @@ To recreate the `.reflect` files from existing `.builder` files:
 
 * Run `ShaderCompilerTest --regenerate-reflect`
 * **Always read the resulting diff.** Regenerating is only correct once you have decided the new bindings, offsets and locations are what you want. A diff you cannot explain is a bug, not a baseline.
-* Setting `OMNISCI_always_save_shader_artifacts=reflect` writes the same format as a `.reflection` artifact for any shader the server compiles, which is the quickest way to see the reflection for a shader that has no test case.
+* Setting `OMNISCI_always_save_shader_artifacts=reflect` writes the same format as a `.reflect` artifact for any shader the server compiles, which is the quickest way to see the reflection for a shader that has no test case.
