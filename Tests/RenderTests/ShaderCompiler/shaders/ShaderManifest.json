@@ -83,6 +83,21 @@
       "internal_path": "ShaderCompilerTests/",
       "language": "glsl",
       "class": "vertex"
+    },
+    {
+      "filename": "slangSelectionTest.vert",
+      "file_path": ".",
+      "internal_path": "ShaderCompilerTests/",
+      "language": "glsl",
+      "class": "vertex",
+      "slang": true
+    },
+    {
+      "filename": "slangSelectionTest.frag",
+      "file_path": ".",
+      "internal_path": "ShaderCompilerTests/",
+      "language": "glsl",
+      "class": "fragment"
     }
   ]
 }

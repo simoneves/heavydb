@@ -36,6 +36,7 @@
 #include "GfxDriver/RenderError.h"
 #include "GfxDriver/ShaderCompiler/GlslangWrapper.h"
 #include "GfxDriver/ShaderCompiler/JSONSchemas.h"
+#include "GfxDriver/ShaderCompiler/SlangBackend.h"
 #include "GfxDriver/ShaderCompiler/SpirvArtifacts.h"
 #include "GfxDriver/ShaderCompiler/Types.h"
 #include "GfxDriver/TypeGLSL.h"
@@ -889,12 +890,44 @@ spirv_t optimize_spirv(const spirv_t& spirv_in) {
 //
 // ShaderManager
 //
+namespace {
+
+constexpr char compiler_backend_env_var[] = "OMNISCI_shader_compiler_backend";
+
+// Development switch until Slang is approved for shipping, read the way the shader
+// artifact switches are, rather than a server option
+ShaderCompilerBackendType preferred_backend_from_environment() {
+  auto const* env = getenv(compiler_backend_env_var);
+  if (env == nullptr || std::string_view(env) == "glslang") {
+    return ShaderCompilerBackendType::kGlslang;
+  }
+  if (std::string_view(env) == "slang") {
+#ifdef HAVE_SLANG
+    return ShaderCompilerBackendType::kSlang;
+#else
+    LOG(WARNING) << compiler_backend_env_var
+                 << "=slang, but this build has no Slang support (ENABLE_SLANG). Using "
+                    "glslang.";
+    return ShaderCompilerBackendType::kGlslang;
+#endif
+  }
+  LOG(WARNING) << "Unrecognised " << compiler_backend_env_var << "=\"" << env
+               << "\", expected \"glslang\" or \"slang\". Using glslang.";
+  return ShaderCompilerBackendType::kGlslang;
+}
+
+}  // namespace
+
 ShaderManager::ShaderManager(LibraryUqPtr library)
     : library_{std::move(library)}
     , can_save_artifacts_{false}
-    , always_save_artifacts_{ShaderArtifactTypeBits::kNone} {
+    , always_save_artifacts_{ShaderArtifactTypeBits::kNone}
+    , preferred_backend_{preferred_backend_from_environment()} {
   CHECK(library_);
-  compiler_backend_ = std::make_unique<GlslangWrapper>(*library_);
+  createBackends();
+  LOG_IF(INFO, preferred_backend_ == ShaderCompilerBackendType::kSlang)
+      << "Shader compiler: Slang for materials whose stages have opted in, glslang "
+         "otherwise";
   library_->add("Marks/typeDefines.glsl", "glsl", "glsl", type_defines_string);
   library_->updateDictionaries();
 
@@ -917,7 +950,8 @@ ShaderManager::ShaderManager(LibraryUqPtr library)
 }
 
 ShaderManager::~ShaderManager() {
-  compiler_backend_ = nullptr;
+  slang_backend_ = nullptr;
+  glslang_backend_ = nullptr;
   library_ = nullptr;
 #if GENERATE_COMPILE_STATS
   g_stats_reporter.generateReport(std::cout);
@@ -930,9 +964,29 @@ gfx::Library& ShaderManager::getLibrary() const {
   return *library_.get();
 }
 
+void ShaderManager::createBackends() {
+  // Both hold a reference to the library, so are recreated with it
+  glslang_backend_ = std::make_unique<GlslangWrapper>(*library_);
+  slang_backend_ = nullptr;
+#ifdef HAVE_SLANG
+  if (preferred_backend_ == ShaderCompilerBackendType::kSlang) {
+    slang_backend_ = std::make_unique<SlangBackend>(*library_);
+  }
+#endif
+}
+
+void ShaderManager::setPreferredCompilerBackend(ShaderCompilerBackendType backend) {
+#ifndef HAVE_SLANG
+  RUNTIME_EX_ASSERT(backend != ShaderCompilerBackendType::kSlang,
+                    "The Slang shader compiler backend is not built in (ENABLE_SLANG)");
+#endif
+  preferred_backend_ = backend;
+  createBackends();
+}
+
 void ShaderManager::replaceLibrary(LibraryUqPtr library) {
   library_ = std::move(library);
-  compiler_backend_ = std::make_unique<GlslangWrapper>(*library_);
+  createBackends();
   library_->add("Marks/typeDefines.glsl", "glsl", "glsl", type_defines_string);
   library_->updateDictionaries();
 }
@@ -1241,8 +1295,20 @@ ShaderCacheShPtrVector ShaderManager::buildSpirv(BuilderUqPtrVector& builders,
   start_time = timer_start();
 #endif
 
+  // A material goes to Slang only if every stage has opted in: its stages have to
+  // agree on their interface, so they are never split across compilers
+  bool const use_slang =
+      slang_backend_ != nullptr &&
+      std::all_of(builders.begin(), builders.end(), [](auto const& builder) {
+        return builder->root_item_.slang_ready;
+      });
+  auto& backend = use_slang ? *slang_backend_ : *glslang_backend_;
+  VLOG(1) << "Compiling " << stage_sources.size() << " stage(s) with "
+          << (use_slang ? "Slang" : "glslang") << ", starting with \""
+          << (stage_sources.empty() ? "" : stage_sources.front().pretty_name) << "\"";
+
   // Generate spirv
-  auto compile_results = compiler_backend_->compileMaterial(stage_sources);
+  auto compile_results = backend.compileMaterial(stage_sources);
   CHECK_EQ(compile_results.stages.size(), builders.size());
 
 #if GENERATE_COMPILE_STATS
@@ -1327,6 +1393,10 @@ ShaderCacheShPtrVector ShaderManager::buildSpirv(BuilderUqPtrVector& builders,
         }
 #else
         auto basename = library_item_to_filename(builder.root_item_);
+        // So that artifacts from the two compilers are never mistaken for each other
+        if (use_slang) {
+          basename += ".slang";
+        }
         if (ShaderArtifactTypeBits::kBuilder & artifacts_to_save) {
           serializeBuilder(builder, basename);
         }
