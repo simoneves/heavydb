@@ -12,6 +12,7 @@
 #include <cstring>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include <slang-com-ptr.h>
 #include <slang-deprecated.h>
@@ -186,11 +187,19 @@ ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
   // Slang drops any global resource the entry point does not use, where glslang keeps
   // every one declared. PreserveParameters does not change that for GLSL input, set
   // either on the session or on the target. See SlangUnusedResourcesTest.
-  std::array<slang::CompilerOptionEntry, 2> options{};
+  //
+  // Warning 39001, explicit binding overlap, is disabled: the stages of a material are
+  // compiled together and share a resource by declaring the same explicit binding in
+  // each, which is exactly what it warns about. An overlap that is not meant is still
+  // caught, by ShaderRedecorator's clash check.
+  std::array<slang::CompilerOptionEntry, 3> options{};
   options[0].name = slang::CompilerOptionName::EmitSpirvDirectly;
   options[0].value.intValue0 = 1;
   options[1].name = slang::CompilerOptionName::VulkanUseEntryPointName;
   options[1].value.intValue0 = 1;
+  options[2].name = slang::CompilerOptionName::DisableWarnings;
+  options[2].value.kind = slang::CompilerOptionValueKind::String;
+  options[2].value.stringValue0 = "39001";
 
   slang::SessionDesc session_desc;
   session_desc.targets = &target;
@@ -209,56 +218,79 @@ ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
     return results;
   }
 
-  // Each stage is compiled through a compile request with a GLSL translation unit,
-  // which is what slangc does, rather than through the newer module API
+  // The whole material is one compile request, a GLSL translation unit and an entry
+  // point per stage, so that Slang lays out the bindings of every stage together, as
+  // glslang's shared resolver does. Distinct resources then get distinct bindings
+  // across the stages, and a resource shared between stages gets the same binding in
+  // each only if it declares it explicitly; left to Slang, each stage's copy is a
+  // separate parameter with a binding of its own. The library binds its shared
+  // resources explicitly, and opting a shader in requires its reflection to match
+  // glslang's, which a split binding would not.
+  //
+  // A compile request is what slangc uses, rather than the newer module API
   // (loadModuleFromSourceString). The module API loses GLSL's workgroup size
   // declaration, layout(local_size_x = N) in, and emits LocalSize 1 1 1 instead, so
   // every compute dispatch runs a fraction of its invocations and renders wrong without
   // any error. The compile request keeps it. It is declared in slang-deprecated.h, so
   // revisit this if a Slang upgrade drops it or fixes the module API.
+  Slang::ComPtr<slang::ICompileRequest> request;
+  if (SLANG_FAILED(session->createCompileRequest(request.writeRef()))) {
+    fail_stage(0, "Failed to create a Slang compile request");
+    return results;
+  }
+  std::vector<int> entry_points;
+  entry_points.reserve(stages.size());
   for (size_t i = 0; i < stages.size(); ++i) {
     auto const& stage = stages[i];
-
-    Slang::ComPtr<slang::ICompileRequest> request;
-    if (SLANG_FAILED(session->createCompileRequest(request.writeRef()))) {
-      fail_stage(i,
-                 "Failed to create a Slang compile request for shader \"" +
-                     stage.pretty_name + "\"");
-      return results;
-    }
     auto const translation_unit = request->addTranslationUnit(
         SLANG_SOURCE_LANGUAGE_GLSL, ("stage" + std::to_string(i)).c_str());
     request->addTranslationUnitSourceString(
         translation_unit, stage.pretty_name.c_str(), stage.source.c_str());
     auto const entry_point_name =
         stage.entry_point.empty() ? std::string("main") : stage.entry_point;
-    auto const entry_point = request->addEntryPoint(
-        translation_unit, entry_point_name.c_str(), to_slang_stage(stage.shader_stage));
+    entry_points.push_back(request->addEntryPoint(
+        translation_unit, entry_point_name.c_str(), to_slang_stage(stage.shader_stage)));
+  }
 
-    auto const compiled = request->compile();
-    std::string const diagnostics =
-        request->getDiagnosticOutput() ? request->getDiagnosticOutput() : "";
-    if (SLANG_FAILED(compiled)) {
-      fail_stage(i,
-                 "Slang failed to compile shader \"" + stage.pretty_name + "\":\n" +
-                     diagnostics);
-      return results;
+  auto const compiled = request->compile();
+  std::string const diagnostics =
+      request->getDiagnosticOutput() ? request->getDiagnosticOutput() : "";
+  if (SLANG_FAILED(compiled)) {
+    // Slang reports the material as a whole, naming the file each message is about, so
+    // attribute the failure to every stage it names, or to the first if it names none
+    bool attributed = false;
+    for (size_t i = 0; i < stages.size(); ++i) {
+      if (diagnostics.find(stages[i].pretty_name) != std::string::npos) {
+        fail_stage(i,
+                   "Slang failed to compile shader \"" + stages[i].pretty_name + "\":\n" +
+                       diagnostics);
+        attributed = true;
+      }
     }
-    // Warnings matter here: narrowing a double literal to float, for one, was only a
-    // warning, so log them rather than let a successful compile hide them
-    if (!diagnostics.empty()) {
-      LOG(WARNING) << "Slang diagnostics for shader \"" << stage.pretty_name << "\":\n"
-                   << diagnostics;
+    if (!attributed) {
+      fail_stage(0, "Slang failed to compile:\n" + diagnostics);
     }
+    return results;
+  }
+  // Warnings matter here: narrowing a double literal to float, for one, was only a
+  // warning, so log them rather than let a successful compile hide them
+  if (!diagnostics.empty()) {
+    LOG(WARNING) << "Slang diagnostics for shader \"" << stages.front().pretty_name
+                 << "\"" << (stages.size() > 1 ? " and the rest of its material" : "")
+                 << ":\n"
+                 << diagnostics;
+  }
 
+  for (size_t i = 0; i < stages.size(); ++i) {
     Slang::ComPtr<ISlangBlob> code;
-    if (SLANG_FAILED(request->getEntryPointCodeBlob(entry_point, 0, code.writeRef())) ||
+    if (SLANG_FAILED(
+            request->getEntryPointCodeBlob(entry_points[i], 0, code.writeRef())) ||
         !code || code->getBufferSize() == 0 ||
         code->getBufferSize() % sizeof(uint32_t) != 0) {
-      fail_stage(i, "Slang generated no SPIR-V for shader \"" + stage.pretty_name + "\"");
+      fail_stage(
+          i, "Slang generated no SPIR-V for shader \"" + stages[i].pretty_name + "\"");
       return results;
     }
-
     auto& spirv = results.stages[i].first;
     spirv.resize(code->getBufferSize() / sizeof(uint32_t));
     std::memcpy(spirv.data(), code->getBufferPointer(), code->getBufferSize());

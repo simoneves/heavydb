@@ -17,11 +17,11 @@ namespace gfx {
 
 // Compiles the assembled GLSL through Slang's GLSL compatibility mode. The source is
 // exactly what glslang is given, so this only suits shaders Slang's GLSL subset
-// models; see .cursor/plans/pr6-shader-compiler-backend.md for which those are.
+// models, which is why a shader is compiled here only once its manifest opts it in.
 //
-// Each stage is compiled on its own for now. A material whose stages declare
-// resources without explicit bindings will get colliding bindings, which the
-// redecorator's clash check rejects; settling that is PR 6g.
+// A material's stages are compiled together, so their bindings are laid out across the
+// whole material. A resource shared between stages has to declare its binding
+// explicitly to get the same one in each; see compileMaterial.
 class SlangBackend final : public ShaderCompilerBackend {
  public:
   explicit SlangBackend(const Library& library);

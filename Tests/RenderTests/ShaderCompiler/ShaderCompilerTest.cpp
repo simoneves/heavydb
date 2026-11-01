@@ -1206,6 +1206,115 @@ TEST_F(GeneralShaderCompilerTest, SlangEnvironmentSelectionTest) {
   preferred_with(original ? saved.c_str() : nullptr);
 }
 
+TEST_F(GeneralShaderCompilerTest, SlangMaterialBindingTest) {
+  // A material's stages are compiled together, so Slang lays out their bindings across
+  // the material as glslang's shared resolver does, and the reflection of each stage
+  // matches glslang's. Compiled one stage at a time, both stages here would get binding
+  // 0 and the material would be rejected as a clash.
+  GlslangWrapper glslang(this->shaderMgr->getLibrary());
+  SlangBackend slang(this->shaderMgr->getLibrary());
+  auto const reflect_material = [](ShaderCompilerBackend& backend,
+                                   const std::string& vert,
+                                   const std::string& frag) {
+    auto const results = backend.compileMaterial(
+        {ShaderCompilerBackend::StageSource{
+             "bindingTest.vert", vert, "main", ShaderStage::kVertex},
+         ShaderCompilerBackend::StageSource{
+             "bindingTest.frag", frag, "main", ShaderStage::kFragment}});
+    std::vector<std::string> reflections;
+    ShaderRedecorator redecorator("bindingTest");
+    for (auto const& [spirv, error] : results.stages) {
+      EXPECT_FALSE(spirv.empty()) << results.material_error;
+      ShaderReflection reflection;
+      if (!spirv.empty()) {
+        redecorator.redecorate(spirv, reflection, "bindingTest");
+      }
+      reflections.push_back(reflection_to_string(reflection));
+    }
+    return reflections;
+  };
+  std::string const header = R"glsl(#version 460
+#extension GL_EXT_scalar_block_layout : require
+)glsl";
+
+  // Distinct resources in each stage, none bound explicitly, which is how every
+  // multi-stage material in the post-processing family declares them
+  {
+    auto const vert = header + R"glsl(layout(std430) uniform VERT_UBO {
+  vec4 a;
+};
+void main() {
+  gl_Position = a;
+}
+)glsl";
+    auto const frag = header + R"glsl(layout(std430) uniform FRAG_UBO {
+  vec4 b;
+};
+uniform sampler2D tex;
+layout(location = 0) out vec4 color;
+void main() {
+  color = b + texture(tex, vec2(0.0));
+}
+)glsl";
+    EXPECT_EQ(reflect_material(glslang, vert, frag), reflect_material(slang, vert, frag));
+  }
+
+  // A resource shared between the stages through an explicit binding
+  {
+    auto const vert = header + R"glsl(layout(std430, binding = 0) uniform SHARED_UBO {
+  vec4 s;
+};
+layout(std430) uniform VERT_UBO {
+  vec4 a;
+};
+void main() {
+  gl_Position = s + a;
+}
+)glsl";
+    auto const frag = header + R"glsl(layout(std430, binding = 0) uniform SHARED_UBO {
+  vec4 s;
+};
+layout(std430) uniform FRAG_UBO {
+  vec4 b;
+};
+layout(location = 0) out vec4 color;
+void main() {
+  color = s + b;
+}
+)glsl";
+    EXPECT_EQ(reflect_material(glslang, vert, frag), reflect_material(slang, vert, frag));
+  }
+
+  // Pinned as a difference: a resource shared without an explicit binding gets one
+  // binding from glslang, which matches it by name, and a binding per stage from Slang,
+  // which sees two parameters. Shaders that do this cannot opt in to Slang.
+  {
+    auto const vert = header + R"glsl(layout(std430) uniform SHARED_UBO {
+  vec4 s;
+};
+void main() {
+  gl_Position = s;
+}
+)glsl";
+    auto const frag = header + R"glsl(layout(std430) uniform SHARED_UBO {
+  vec4 s;
+};
+layout(location = 0) out vec4 color;
+void main() {
+  color = s;
+}
+)glsl";
+    auto const from_glslang = reflect_material(glslang, vert, frag);
+    auto const from_slang = reflect_material(slang, vert, frag);
+    ASSERT_EQ(from_glslang.size(), size_t(2));
+    ASSERT_EQ(from_slang.size(), size_t(2));
+    EXPECT_NE(from_glslang[1].find("\"SHARED_UBO\" set=0 binding=0"), std::string::npos)
+        << from_glslang[1];
+    EXPECT_NE(from_slang[1].find("\"SHARED_UBO\" set=0 binding=1"), std::string::npos)
+        << from_slang[1];
+  }
+}
+
 // A benchmark rather than a test, so disabled: run it with
 // --gtest_also_run_disabled_tests --gtest_filter=*SlangCompileTime* to compare the cost
 // of compiling the same assembled GLSL through each backend. Materials are compiled at
