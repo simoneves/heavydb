@@ -343,6 +343,15 @@ GlslangWrapper::CompileResults GlslangWrapper::glslToSpirv(
     return results;
   }
 
+  // Every failure stops the whole material, which can leave stages that did nothing
+  // wrong without SPIR-V. Each failure is therefore recorded against the material as
+  // well as against its own stage, so that whichever stage the caller happens to report
+  // on first can say what actually went wrong.
+  auto const fail_stage = [&results](size_t stage_index, std::string error_string) {
+    results.material_error += error_string;
+    results.stages[stage_index].second = std::move(error_string);
+  };
+
   EShMessages messages = static_cast<EShMessages>(EShMsgSpvRules | EShMsgVulkanRules);
   if (dump_AST) {
     messages = (EShMessages)(messages | EShMsgAST);
@@ -395,17 +404,15 @@ GlslangWrapper::CompileResults GlslangWrapper::glslToSpirv(
       // Just log the error but don't throw yet. This allows ShaderManager to save
       // artifacts and handle the error
       std::string info_log(shader.getInfoLog());
-      auto& error_string = results.stages[i].second;
-      error_string = "Error parsing shader \"" + stage.pretty_name + "\":\n" + info_log;
+      auto error_string =
+          "Error parsing shader \"" + stage.pretty_name + "\":\n" + info_log;
 #ifndef NDEBUG
       auto const error_line_nums = find_error_line_numbers(info_log);
       error_string += "Shader Source:\n" +
                       add_line_numbers(stage.source, error_line_nums) +
                       "End Shader Source\n";
 #endif
-      // Report it against the material too, so that the stages which did parse have
-      // something better than a bare "no spirv" to offer
-      results.material_error += error_string;
+      fail_stage(i, std::move(error_string));
       parsed_all = false;
     }
   }
@@ -424,14 +431,16 @@ GlslangWrapper::CompileResults GlslangWrapper::glslToSpirv(
     program.addShader(shaders[i].get());
 
     if (!program.link(messages)) {
-      results.stages[i].second = "Error merging shader IR for shader \"" +
-                                 stage.pretty_name + "\":\n" + program.getInfoLog();
+      fail_stage(i,
+                 "Error merging shader IR for shader \"" + stage.pretty_name + "\":\n" +
+                     program.getInfoLog());
       return results;
     }
 
     if (!program.getIntermediate(shader_stage_to_glslang_enum(stage.shader_stage))) {
-      results.stages[i].second = "Error getting IR for shader \"" + stage.pretty_name +
-                                 "\":\n" + program.getInfoLog();
+      fail_stage(i,
+                 "Error getting IR for shader \"" + stage.pretty_name + "\":\n" +
+                     program.getInfoLog());
       return results;
     }
   }
@@ -453,8 +462,9 @@ GlslangWrapper::CompileResults GlslangWrapper::glslToSpirv(
 
     glslang::TGlslIoMapper glsl_io_mapper;
     if (!program.mapIO(&io_map_resolver, &glsl_io_mapper)) {
-      results.stages[i].second = "Error mapping I/O for shader \"" + stage.pretty_name +
-                                 "\":\n" + program.getInfoLog();
+      fail_stage(i,
+                 "Error mapping I/O for shader \"" + stage.pretty_name + "\":\n" +
+                     program.getInfoLog());
       return results;
     }
 
@@ -463,8 +473,9 @@ GlslangWrapper::CompileResults GlslangWrapper::glslToSpirv(
     // whose explicit binding disagrees with the one it was given in another stage sets
     // hasError on the resolver. Without this the message only reaches the info log.
     if (io_map_resolver.hasError()) {
-      results.stages[i].second = "Error resolving I/O for shader \"" + stage.pretty_name +
-                                 "\":\n" + program.getInfoLog();
+      fail_stage(i,
+                 "Error resolving I/O for shader \"" + stage.pretty_name + "\":\n" +
+                     program.getInfoLog());
       return results;
     }
 
@@ -478,13 +489,14 @@ GlslangWrapper::CompileResults GlslangWrapper::glslToSpirv(
       for (auto const& varying : unlocated) {
         error_string += "\n    " + varying;
       }
-      results.stages[i].second = error_string;
+      fail_stage(i, std::move(error_string));
       return results;
     }
 
     if (!program.buildReflection()) {
-      results.stages[i].second = "Error building reflection for shader \"" +
-                                 stage.pretty_name + "\":\n" + program.getInfoLog();
+      fail_stage(i,
+                 "Error building reflection for shader \"" + stage.pretty_name + "\":\n" +
+                     program.getInfoLog());
       return results;
     }
 
@@ -500,9 +512,9 @@ GlslangWrapper::CompileResults GlslangWrapper::glslToSpirv(
         &spv_logger);
 
     if (spirv.empty()) {
-      results.stages[i].second = "Spirv generation from IR failed for shader \"" +
-                                 stage.pretty_name + "\":\n" +
-                                 spv_logger.getAllMessages();
+      fail_stage(i,
+                 "Spirv generation from IR failed for shader \"" + stage.pretty_name +
+                     "\":\n" + spv_logger.getAllMessages());
     }
 
     if (dump_spv_build_log) {

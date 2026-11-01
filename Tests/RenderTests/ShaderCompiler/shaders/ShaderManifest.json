@@ -41,6 +41,20 @@
       "internal_path": "ShaderCompilerTests/",
       "language": "glsl",
       "class": "fragment"
+    },
+    {
+      "filename": "linkFailureTest.vert",
+      "file_path": ".",
+      "internal_path": "ShaderCompilerTests/",
+      "language": "glsl",
+      "class": "vertex"
+    },
+    {
+      "filename": "linkFailureTest.frag",
+      "file_path": ".",
+      "internal_path": "ShaderCompilerTests/",
+      "language": "glsl",
+      "class": "fragment"
     }
   ]
 }

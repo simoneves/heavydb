@@ -690,6 +690,25 @@ TEST_F(GeneralShaderCompilerTest, UnlocatedVaryingTest) {
   }
 }
 
+TEST_F(GeneralShaderCompilerTest, LinkFailureInLaterStageTest) {
+  // The fragment shader parses but has no main, which glslang rejects only when it
+  // links the stage. A failure anywhere stops the whole material, so the vertex stage
+  // is left with no SPIR-V either, and it is the first stage the caller reports on. The
+  // fragment shader's link error has to reach the caller all the same, rather than a
+  // generic complaint about the vertex shader, which has nothing wrong with it.
+  try {
+    this->shaderMgr->createCacheVectorFromTemplate(
+        {{"ShaderCompilerTests/linkFailureTest.vert"},
+         {"ShaderCompilerTests/linkFailureTest.frag"}});
+    FAIL() << "Expected the fragment shader to fail to link";
+  } catch (const std::runtime_error& e) {
+    std::string const message(e.what());
+    EXPECT_NE(message.find("linkFailureTest.frag"), std::string::npos) << message;
+    EXPECT_NE(message.find("Missing entry point"), std::string::npos) << message;
+    EXPECT_EQ(message.find("Error generating Spir-V"), std::string::npos) << message;
+  }
+}
+
 }  // namespace ShaderCompilerTests
 
 int main(int argc, char* argv[]) {
