@@ -166,7 +166,8 @@
       "file_path": "./Scales/shaders",
       "internal_path": "Scales/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "accumulatorScalePct_1stPass.vert",
