@@ -6,8 +6,8 @@ todos:
     content: "Decided 2026-11-01: take reflection from Slang's program layout. The spike confirmed it works: on accumulatorScale_2ndPass's failing variant the layout reports the unused block with a binding of its own (0), and the used resources' layout bindings agree with the SPIR-V's"
     status: completed
   - id: reflection-from-layout
-    content: "Build ShaderReflection from Slang's program layout for Slang-compiled materials, instead of from the SPIR-V. Open design point: the layout covers the whole material, ShaderReflection is per stage, so each stage's declared parameters have to be attributed to it (likely from its own translation unit) while bindings come from the combined program. Reproduce the redecorator's conventions: names, struct flattening, array dimensions, push constant spans, the type whitelist, the clash check"
-    status: pending
+    content: "Build ShaderReflection from Slang's program layout for Slang-compiled materials, instead of from the SPIR-V. Open design point: the layout covers the whole material, ShaderReflection is per stage, so each stage's declared parameters have to be attributed to it (likely from its own translation unit) while bindings come from the combined program. Reproduce the redecorator's conventions: names, struct flattening, array dimensions, push constant spans, the type whitelist, the clash check Done 2026-11-01 in \"Reflect Slang materials from Slang's program layout\": stages attributed through each translation unit's module; storage block members laid out from the generic's element type, since Slang gives a GLSL buffer no element layout; array sizes taken as length times stride, Slang's own omitting the trailing padding; and every stage cross-checked against reflection of its own SPIR-V, failing the material on any disagreement. accumulatorScale_2ndPass.frag then opted in and passed be-render-tests."
+    status: completed
   - id: mechanical-changes
     content: "Glslang-neutral source changes: block-level interface locations in GlslStructBuilder (all 17 Mark stages), padding instead of layout(offset) in PolyMark's split push constant block, and a memory-model review of the two coherent image atomics. Each landed with glslang's SPIR-V shown unchanged or equivalent"
     status: pending
@@ -93,6 +93,16 @@ Options, to choose between once the spike answers:
 - **Make every declared resource reachable in every variant.** Template changes across the Marks and Scales. Probably the least attractive, but it needs no runtime change.
 
 Whatever is chosen, find out first why a missing block made the accumulation output wrong rather than raising an error: that is the failure mode to close regardless.
+
+### Built (2026-11-01)
+
+`SlangReflection.cpp` builds the reflection; `SlangBackend` returns it with the SPIR-V and `buildSpirv` uses it. What building it found:
+- **Stage attribution** works as planned: the program layout lists each translation unit's parameters in order, and each unit's module layout names them, so they are matched in sequence and the attribution checked.
+- **A GLSL buffer block has no element layout in Slang's reflection.** Its type is `GLSLShaderStorageBuffer<T, L>`, and every accessor for its element returns nothing. `T` is reachable through the generic and laid out with `getTypeLayout`, but that ignores `L`, the block's data layout. For a scalar-declared block of structs the two could differ.
+- **Slang reports an array's size without the padding after its last element**, where SPIRV-Cross's declared size, which the goldens record, includes it. The cross-check against the SPIR-V caught this on its first run.
+- **So every stage is cross-checked:** reflected from its SPIR-V the old way as well, with everything found there required to appear identically in the layout's reflection. A disagreement fails the material instead of rendering wrong. What only the layout reports are the resources the shader never reads, whose offsets cannot matter.
+
+Sixteen production stages are now opted in, `accumulatorScale_2ndPass.frag` among them, and be-render-tests against a Slang server gives 441 passing, as glslang does.
 
 ## 2. Mechanical, glslang-neutral changes
 
