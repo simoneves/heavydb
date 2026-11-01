@@ -1142,6 +1142,38 @@ void main() {
   }
 }
 
+TEST_F(GeneralShaderCompilerTest, SlangLayoutReflectionTest) {
+  // The backend reflects Slang materials from the program layout rather than from the
+  // SPIR-V, so resources the entry point never reads are still reflected, with the
+  // bindings Slang reserved for them, and the result matches glslang's. The SPIR-V
+  // itself still leaves them out; SlangUnusedResourcesTest pins that.
+  std::string const source = R"glsl(#version 460
+#extension GL_EXT_scalar_block_layout : require
+layout(location = 0) out vec4 color;
+layout(std430, binding = 0) uniform UNUSED_UBO {
+  vec4 unused_value;
+};
+layout(binding = 1) uniform sampler2D unused_sampler;
+layout(push_constant) uniform UNUSED_PUSH_CONSTANTS {
+  uint unused_index;
+} pushConstants;
+void main() {
+  color = vec4(1.0);
+}
+)glsl";
+  GlslangWrapper glslang(this->shaderMgr->getLibrary());
+  SlangBackend slang(this->shaderMgr->getLibrary());
+  auto const from_glslang =
+      reflect_with(glslang, "unused.frag", source, ShaderStage::kFragment);
+  auto const results = slang.compileMaterial({ShaderCompilerBackend::StageSource{
+      "unused.frag", source, "main", ShaderStage::kFragment}});
+  ASSERT_FALSE(results.stages[0].first.empty()) << results.material_error;
+  ASSERT_EQ(results.reflections.size(), size_t(1));
+  EXPECT_EQ(from_glslang,
+            reflection_to_string(results.reflections[0]) +
+                execution_modes(results.stages[0].first));
+}
+
 TEST_F(GeneralShaderCompilerTest, SlangSelectionTest) {
   // The generator word of a SPIR-V header says which compiler produced it
   constexpr uint32_t kGlslangGenerator = 8;

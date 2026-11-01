@@ -20,6 +20,8 @@
 
 #include "GfxDriver/RenderError.h"
 #include "GfxDriver/ShaderCompiler/Library.h"
+#include "GfxDriver/ShaderCompiler/ShaderRedecorator.h"
+#include "GfxDriver/ShaderCompiler/SlangReflection.h"
 
 namespace gfx {
 
@@ -294,6 +296,38 @@ ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
     auto& spirv = results.stages[i].first;
     spirv.resize(code->getBufferSize() / sizeof(uint32_t));
     std::memcpy(spirv.data(), code->getBufferPointer(), code->getBufferSize());
+  }
+
+  // Reflect from the program layout, which has every declared resource, where the
+  // SPIR-V lacks those the entry point never reads. Each stage is also reflected from
+  // its SPIR-V the way glslang's is, and everything found there has to appear in the
+  // layout's reflection identically. The layout of a storage block is computed apart
+  // from the one Slang emitted, so this is what guarantees the two never disagree
+  // about a resource the shader actually uses. Any failure fails the whole material.
+  auto const fail_material = [&results, &stages](std::string error) {
+    for (auto& stage : results.stages) {
+      stage.first.clear();
+    }
+    results.material_error += error;
+    results.stages[0].second = std::move(error);
+  };
+  try {
+    auto reflections = reflect_slang_material(*request, stages);
+    for (size_t i = 0; i < stages.size(); ++i) {
+      ShaderRedecorator redecorator(stages[i].pretty_name);
+      ShaderReflection from_spirv;
+      redecorator.redecorate(results.stages[i].first, from_spirv, stages[i].pretty_name);
+      auto const differences = compare_with_spirv_reflection(reflections[i], from_spirv);
+      if (!differences.empty()) {
+        fail_material("Slang's layout and its SPIR-V disagree about shader \"" +
+                      stages[i].pretty_name + "\":\n" + differences);
+        return results;
+      }
+    }
+    results.reflections = std::move(reflections);
+  } catch (std::exception& e) {
+    fail_material("Failed to reflect Slang's layout for shader \"" +
+                  stages.front().pretty_name + "\": " + e.what());
   }
 
   return results;

@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "GfxDriver/ShaderCompiler/ShaderReflection.h"
 #include "GfxDriver/ShaderCompiler/Types.h"
 
 namespace gfx {
@@ -39,6 +40,10 @@ class ShaderCompilerBackend {
     // A failure in any one stage stops the whole material, so this carries the reason
     // for the benefit of the stages that had nothing wrong with them
     std::string material_error;
+    // One per stage if the backend reflects the material itself, otherwise empty and
+    // the caller reflects each stage's SPIR-V. Slang does, because its SPIR-V leaves
+    // out resources the entry point never reads.
+    std::vector<ShaderReflection> reflections;
   };
 
   virtual ~ShaderCompilerBackend() = default;

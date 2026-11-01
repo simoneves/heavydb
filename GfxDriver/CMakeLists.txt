@@ -128,7 +128,9 @@ list(APPEND GFXDRIVER_LIBS ${SpirvCross_LIBRARIES})
 
 if(ENABLE_SLANG)
   find_package(Slang REQUIRED)
-  list(APPEND GFXDRIVER_SOURCES ShaderCompiler/SlangBackend.cpp)
+  list(APPEND GFXDRIVER_SOURCES
+    ShaderCompiler/SlangBackend.cpp
+    ShaderCompiler/SlangReflection.cpp)
   list(APPEND GFXDRIVER_INCLUDE_DIRS ${Slang_INCLUDE_DIR})
   list(APPEND GFXDRIVER_LIBS ${Slang_LIBRARIES})
 endif()

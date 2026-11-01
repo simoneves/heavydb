@@ -1333,9 +1333,13 @@ ShaderCacheShPtrVector ShaderManager::buildSpirv(BuilderUqPtrVector& builders,
 
     // populate reflection here?
     if (shader_redecorator && !compile_result.first.empty()) {
-      // build reflection
-      shader_redecorator->redecorate(
-          compile_result.first, reflection, builder.getTemplateName());
+      // build reflection, unless the backend reflected the material itself
+      if (!compile_results.reflections.empty()) {
+        reflection = std::move(compile_results.reflections[stage_index]);
+      } else {
+        shader_redecorator->redecorate(
+            compile_result.first, reflection, builder.getTemplateName());
+      }
 
       // validate presence of specified external uniform buffers
       for (auto const& name : builder.external_uniform_buffer_names_) {
