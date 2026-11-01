@@ -271,6 +271,8 @@ Take it only if something else comes to need 1.4, and confirm the supported-driv
 
 ## PR 6 - Introduce a compiler backend seam, add Slang alongside glslang
 
+**Detailed plan:** [pr6-shader-compiler-backend.md](pr6-shader-compiler-backend.md), written after PR 0b. It supersedes the sketch below where they differ, chiefly in selecting the backend per material rather than for the whole library.
+
 **Depends on:** PR 0b for scoping, and Slang OSRB approval to merge (not to develop).
 **Required by:** PRs 7 and 8+.
 
