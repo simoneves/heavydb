@@ -9,8 +9,8 @@ todos:
     content: Slang OSRB approval and attribution. External gate on merging PR 6 onward; start now, independent of all code work
     status: pending
   - id: spike-slang-glsl
-    content: "PR 0b: Compile the shader corpus through slangc -allow-glsl and classify failures, reporting Tests/ and non-Tests/ counts separately. Prefer assembled final_glsl over raw sources. No dependencies; gates the scope of PRs 6, 7 and 8"
-    status: pending
+    content: "PR 0b: Compile the shader corpus through slangc -allow-glsl and classify failures, reporting Tests/ and non-Tests/ counts separately. Prefer assembled final_glsl over raw sources. No dependencies; gates the scope of PRs 6, 7 and 8. First pass done 2026-11-01, results under PR 0b below: 18 of 56 production stages verified clean, 13 need Slang-native rewrites, 10 need mechanical fixes, 15 could not be judged because the render suite never assembles them. Closing that coverage gap is what remains"
+    status: in_progress
   - id: remove-tshaderirutils
     content: "PR 3: Delete TShaderIRUtils and reimplement subroutine binding as a textual pass, resolving targets through the Library because the assembled source holds #include directives rather than their text. Landed as c16ae41c47, no golden changed. Retired one copied header rather than the three estimated"
     status: completed
@@ -132,6 +132,49 @@ Two things make the raw-source version of this spike misleading:
 
 - Stage files are not independently compilable. They depend on the `#include` dictionary assembled at runtime by `buildExtensionAndIncludesString` and on the `processOperators` substitutions. Either run over assembled `final_glsl` captured from a real run via the `ShaderArtifactTypeBits` hooks, or treat a raw pass as a lower bound only.
 - Report test and non-test counts separately. Of 163 shader sources, **88 live under `Tests/`**, so more than half the corpus is fixtures that can be rewritten or deleted freely. Only the 75 outside `Tests/` are load-bearing. Recount rather than trusting those figures: the test half grows as coverage is added, and the non-test half shrank by one when `accumulationComposite.frag` went.
+
+### Results of the first pass (2026-11-01)
+
+`slangc` 2026.17 from the `vulkan-sdk-1.4.363` build, invoked as `slangc -allow-glsl -lang glsl -target spirv -fvk-use-scalar-layout -matrix-layout-column-major -stage <stage> -entry <entry>`. Compile success only: nothing here checks that Slang's SPIR-V or bindings match glslang's. The harness is [pr0b-slangc-spike.py](pr0b-slangc-spike.py); it is fed to `python3 -` inside the build container and writes under `build_release/pr0b/`.
+
+**Corpus, recounted from the manifests:** 171 entries, 145 stages and 26 includes, plus `Marks/typeDefines.glsl`, which `ShaderManager` generates at runtime and no manifest lists. Of the stages, **56 are production and 89 are under `Tests/`**. The 163/88/75 figures above are stale.
+
+**Method.** Pass A compiles the assembled GLSL captured by running the whole render suite with `OMNISCI_always_save_shader_artifacts=glsl`: 92 files, 68 clean. Pass B assembles every stage the way `Library` and the builder do (header, extensions, deduplicated transitive includes in dependency order) but cannot apply `processOperators`, so it judges only stages without template tags. Three things the harness must reproduce or every result is noise:
+- `Library` strips each file's `//<extensions>` and `//<includes>` header blocks and the builder emits the transitive include set once. Compiling the files as written duplicates every nested include.
+- `slangc` cannot write to `/dev/null`, and with that as its output reports a failure for files that compiled.
+- Entry points are not always `main`: `SMAAEdgeDetection.frag` is built three times, as `SMAALumaEdgeDetection`, `SMAAColorEdgeDetection` and `SMAADepthEdgeDetection`, and compiles clean as all three.
+
+**Production stages (56):**
+
+| Outcome | Stages |
+|---|---|
+| Verified clean (assembled, compiled) | 18: all PPLL compute, the SMAA passes, the accumulator passes, `MSMultiGpuComposite.comp`, `clearQueryOutputBuffer.comp`, `fullScreenTriangle.vert`, `shadingBase.vert`, `rtShadowsSimple.miss` |
+| Not modelled, needs a Slang-native rewrite | 13: every Mark vertex, geometry and mesh template that touches `slabAddressTable.glsl` or declares geometry/mesh I/O, plus `geoCount_build.comp` and `geoCount_count.comp` |
+| Mechanical fixes only | 10: the Mark fragment templates, `windBarbTemplate.vert`, the two PolyMark PPLL shaders, `accumulationCompositePeer.frag`, `shadingMain.frag` |
+| Not judged: never assembled by the render suite, no known blocker | 15: all six Scales, `mesh2dTemplate.*`, `ppllPolyTemplate_capture.vert` and `_count.vert`, `ppllCountFragments.frag`, `multiGpuCompositeIDs.comp`, `shadingMain.vert`, `tableFunctionTest.*` |
+
+Only 23 of the 56 are assembled by the render suite at all; the rest of the not-modelled and mechanical rows are predicted statically from the root causes below, which is reliable for the not-modelled ones since each is a construct Slang rejects outright. Test stages: 53 verified clean, 14 mechanical, 10 not modelled, 12 not judged.
+
+**Root causes, each confirmed on a minimal shader:**
+
+Not modelled by `-allow-glsl`, with no GLSL-level workaround:
+- `layout(buffer_reference)`, buffer device addresses (`E31217`). The decisive one: `Marks/slabAddressTable.glsl` uses it, and five of the seven Mark vertex-stage templates include it (all but `mesh2dTemplate.vert` and `windBarbTemplate.vert`), as do the two mesh templates. Both `geoCount` passes use it directly. Slang's own pointer types are the replacement, which means those shaders are Slang source, not GLSL.
+- Geometry shader primitive layouts, `layout(lines_adjacency) in` and `layout(triangle_strip, max_vertices = N) out` (`E31217`). Four production geometry shaders.
+- Mesh shader output layout, `layout(triangles, max_vertices, max_primitives) out` (`E31217`), and `taskPayloadSharedEXT` (`E20001`). Two production mesh shaders.
+- `layout(pixel_interlock_ordered) in` (`E31217`). Tests only.
+
+Mechanical, each workaround verified to compile:
+- `layout(location)` on members of an interface block (`E31201`). Every Mark interface block is generated this way by `GlslStructBuilder`, so this is one change in one place, but it reaches all 17 Mark stages. A block-level location or loose varyings both compile. Note PR 4b made per-member locations load-bearing, and the varying check in `GlslangWrapper.cpp` already exempts blocks carrying one location for the whole block.
+- `layout(offset = N)` on a push constant member (`E31201`, `E20016`). Replaceable by padding members, but that changes what the reflection's span rule sees, since the span would then start at 0. PolyMark's split block is the production case.
+- `imageAtomic*` on a `coherent` image (`E30048`). Compiles without `coherent`; `restrict` is fine. Needs a semantic check before dropping it. Two production shaders.
+- `vec4(color, kS)` with `kS` a `vec3` in `PBRShading/shading.glsl` (`E30019`). GLSL takes `kS.x`; Slang refuses. `kS` is only ever accumulated from scalars and is described as a density estimate, so `float kS = 0.0;` is behaviour-preserving and worth doing on its own.
+- A user identifier named `imageSize`, which Slang finds ambiguous with the builtin (`E39999`). Tests only.
+
+**What this means for scoping.** The production shaders split cleanly by family. Compute, post-processing, PPLL and shading are near-clean under `-allow-glsl` and can ride PR 6 with a handful of mechanical edits. The Marks cannot: BDA and geometry/mesh I/O put most Mark vertex templates and every Mark geometry and mesh template into the PR 8 bucket from the start, and the Marks are the core of the renderer. PR 6's flag therefore cannot be all-or-nothing; it has to select per family, or the Marks have to be rewritten before Slang can be the default.
+
+**What is left of PR 0b:**
+- Close the coverage gap: get the 15 unjudged production stages, chiefly the Scales and mesh2d, assembled. Either exercise them from a test (`QueryRendererTest` currently reaches few templates) or capture artifacts from a server render session that uses them.
+- Optionally, a parity check for the 68 clean files: compare the reflection of Slang's SPIR-V with glslang's, since compiling clean says nothing about bindings, locations or layout matching.
 
 ## What PR 3 established, which the rest inherits
 
