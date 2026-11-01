@@ -1083,7 +1083,7 @@ function install_vulkan() {
   # copy the build script locally
   \cp ${SCRIPTS_DIR}/../ThirdParty/vulkan/vulkansdk-${VULKAN_VERSION} vulkansdk
   # build just what we need for this platform
-  ./vulkansdk --maxjobs --skip-deps loader glslang spirvcross vul layers
+  ./vulkansdk --maxjobs --skip-deps loader glslang spirvcross vul layers slang
   # also add these non-default glslang headers
   # glslang 14 tightened which headers it installs, so the destinations may not exist
   mkdir -p ${ARCH}/include/glslang/Include
