@@ -219,7 +219,7 @@ class IoMapResolver : public glslang::TIoMapResolver {
   // resources, not across an interface. So a location assigned here agrees with the
   // next stage only by luck of declaration order, and does so silently: there is no
   // link step across our per-stage programs to catch the mismatch, and the shader
-  // renders wrong rather than failing. Collect the offenders for glslToSpirv to fail
+  // renders wrong rather than failing. Collect the offenders for compileMaterial to fail
   // the compile on.
   //
   // Everything in the shader library declares its locations today, interface blocks
@@ -330,7 +330,7 @@ std::string add_line_numbers(const std::string& code,
 }  // namespace
 #endif
 
-GlslangWrapper::CompileResults GlslangWrapper::glslToSpirv(
+ShaderCompilerBackend::CompileResults GlslangWrapper::compileMaterial(
     const std::vector<StageSource>& stages) {
   // These may become function parameters in the future so using constexpr
   // instead of #defines

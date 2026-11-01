@@ -70,8 +70,8 @@ using LibraryUqPtr = std::unique_ptr<Library>;
 class ShaderManager;
 using ShaderManagerUqPtr = std::unique_ptr<ShaderManager>;
 
-class GlslangWrapper;
-using GlslangWrapperUqPtr = std::unique_ptr<GlslangWrapper>;
+class ShaderCompilerBackend;
+using ShaderCompilerBackendUqPtr = std::unique_ptr<ShaderCompilerBackend>;
 
 class ShaderReflection;
 using ShaderReflectionUqPtr = std::unique_ptr<ShaderReflection>;
