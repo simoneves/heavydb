@@ -432,13 +432,13 @@ TEST_F(GeneralShaderCompilerTest, ShaderRedecoratorTest) {
   EXPECT_EQ(frag_refl.getStorageImageBinding("frag_image"), frag_eb[13]);
 
   //
-  // Nothing below here was checked before PR 1 of the glslang-to-slang
-  // migration, which left the binding numbers above as the only thing standing
-  // between a reflection regression and the renderer.
+  // The binding numbers above say nothing about the rest of the reflection, which
+  // the checks below cover so that a regression there cannot reach the renderer
+  // unnoticed.
   //
 
-  // Everything lands in set 0. No shader declares an explicit set, and
-  // redecorateInternal is only ever called with set 0.
+  // Everything lands in set 0. No shader declares an explicit set, and glslang's
+  // resolver assigns 0 in the absence of one.
   for (auto const* refl : {&vert_refl, &frag_refl}) {
     for (auto const& name : refl->getAllSamplerNames()) {
       EXPECT_EQ(refl->getSamplerSet(name), 0) << name;
@@ -544,8 +544,8 @@ TEST_F(GeneralShaderCompilerTest, ShaderRedecoratorTest) {
 
   // An explicit `binding = N` in the source means "this resource is shared
   // across the stages of this material, keep this number so the stages agree".
-  // That agreement is the whole reason the sentinel scheme exists, so assert it
-  // directly rather than leaving it implied by two hand-maintained tables.
+  // That agreement is what lets the stages share one descriptor set layout, so
+  // assert it directly rather than leaving it implied by two hand-maintained tables.
   EXPECT_EQ(vert_refl.getUniformBufferBinding("SHARED_UBO"),
             frag_refl.getUniformBufferBinding("SHARED_UBO"));
   EXPECT_EQ(vert_refl.getShaderStorageBufferBinding("SHARED_SSBO"),
@@ -598,8 +598,8 @@ TEST_F(GeneralShaderCompilerTest, ShaderRedecoratorTest) {
   EXPECT_TRUE(frag_refl.hasShaderStorageBufferAttr("frag_ssbo_values"));
   EXPECT_TRUE(frag_refl.hasShaderStorageBufferAttr("frag_shared_ssbo_values"));
 
-  // Vertex attributes are reassigned unconditionally from 0, and only the
-  // vertex stage records them
+  // in_position declares no location, so glslang's resolver gives it the first free
+  // one. Only the vertex stage records vertex attributes.
   EXPECT_TRUE(vert_refl.hasVertexAttr("in_position"));
   EXPECT_EQ(vert_refl.getVertexAttrLocation("in_position"), 0);
   EXPECT_EQ(vert_refl.getVertexAttrArraySize("in_position"), 1);
@@ -621,9 +621,9 @@ TEST_F(GeneralShaderCompilerTest, ShaderRedecoratorClashTest) {
     FAIL() << "Expected the clashing bindings to throw";
   } catch (const std::runtime_error& e) {
     // The content of the message matters as much as the throw: it is what tells
-    // a shader author which two resources collided. PRs 4 and 7 of the
-    // glslang-to-slang migration replace this allocator entirely, and the
-    // diagnostic has to survive that, so pin it here.
+    // a shader author which two resources collided. The check is expected to move
+    // when glslang is replaced by Slang, and the diagnostic has to survive that, so
+    // pin it here.
     std::string const message(e.what());
     EXPECT_NE(message.find("Binding clash"), std::string::npos) << message;
     EXPECT_NE(message.find("SHARED_SSBO"), std::string::npos) << message;
@@ -632,8 +632,8 @@ TEST_F(GeneralShaderCompilerTest, ShaderRedecoratorClashTest) {
 }
 
 TEST_F(GeneralShaderCompilerTest, CreateCacheTest) {
-  // createCache is the single-builder path, and nothing had exercised it since PR 1 of
-  // the glslang-to-slang migration moved the FromFile cases onto createCacheVector. Its
+  // createCache is the single-builder path, and the FromFile cases go through
+  // createCacheVector, so nothing else here exercises it. Its
   // one live caller is saveArtifacts, which reads only the GLSL and the SPIR-V, so a
   // regression here would surface as missing artifacts rather than as a test failure.
   auto builder =

@@ -15,8 +15,8 @@ namespace gfx {
 // Reads a compiled shader's interface out of its SPIR-V and into a ShaderReflection,
 // checking as it goes that no two resources of a material were given the same binding.
 // It no longer assigns anything: glslang resolves sets, bindings and locations across
-// the material before this ever sees the module. The name is left alone because PR 7
-// of the Slang migration deletes the class outright.
+// the material before this ever sees the module. The name is left alone because the
+// class is expected to go when glslang is replaced by Slang.
 class ShaderRedecorator {
  public:
   explicit ShaderRedecorator(std::string_view shader_name);
