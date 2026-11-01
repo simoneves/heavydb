@@ -315,7 +315,7 @@ class ShaderManager : boost::noncopyable {
   ShaderArtifactTypeBits always_save_artifacts_;
   std::string artifact_path_;
 
-  GlslangWrapperUqPtr glslang_wrapper_;
+  ShaderCompilerBackendUqPtr compiler_backend_;
 
   void processOperators(Builder& builder,
                         SubroutineMap* rebind_map,

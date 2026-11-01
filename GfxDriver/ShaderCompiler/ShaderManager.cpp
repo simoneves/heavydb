@@ -894,7 +894,7 @@ ShaderManager::ShaderManager(LibraryUqPtr library)
     , can_save_artifacts_{false}
     , always_save_artifacts_{ShaderArtifactTypeBits::kNone} {
   CHECK(library_);
-  glslang_wrapper_ = std::make_unique<GlslangWrapper>(*library_);
+  compiler_backend_ = std::make_unique<GlslangWrapper>(*library_);
   library_->add("Marks/typeDefines.glsl", "glsl", "glsl", type_defines_string);
   library_->updateDictionaries();
 
@@ -917,7 +917,7 @@ ShaderManager::ShaderManager(LibraryUqPtr library)
 }
 
 ShaderManager::~ShaderManager() {
-  glslang_wrapper_ = nullptr;
+  compiler_backend_ = nullptr;
   library_ = nullptr;
 #if GENERATE_COMPILE_STATS
   g_stats_reporter.generateReport(std::cout);
@@ -932,7 +932,7 @@ gfx::Library& ShaderManager::getLibrary() const {
 
 void ShaderManager::replaceLibrary(LibraryUqPtr library) {
   library_ = std::move(library);
-  glslang_wrapper_ = std::make_unique<GlslangWrapper>(*library_);
+  compiler_backend_ = std::make_unique<GlslangWrapper>(*library_);
   library_->add("Marks/typeDefines.glsl", "glsl", "glsl", type_defines_string);
   library_->updateDictionaries();
 }
@@ -1205,9 +1205,9 @@ ShaderCacheShPtrVector ShaderManager::buildSpirv(BuilderUqPtrVector& builders,
   operator_times.reserve(builders.size());
 #endif
 
-  // Assemble the GLSL for every stage before compiling any of it, since glslang needs
-  // to see the whole material at once to assign its I/O across the stages
-  std::vector<GlslangWrapper::StageSource> stage_sources;
+  // Assemble the GLSL for every stage before compiling any of it, since the backend
+  // needs to see the whole material at once to assign its I/O across the stages
+  std::vector<ShaderCompilerBackend::StageSource> stage_sources;
   stage_sources.reserve(builders.size());
   for (auto& builder_ptr : builders) {
     auto& builder = *builder_ptr;
@@ -1242,7 +1242,7 @@ ShaderCacheShPtrVector ShaderManager::buildSpirv(BuilderUqPtrVector& builders,
 #endif
 
   // Generate spirv
-  auto compile_results = glslang_wrapper_->glslToSpirv(stage_sources);
+  auto compile_results = compiler_backend_->compileMaterial(stage_sources);
   CHECK_EQ(compile_results.stages.size(), builders.size());
 
 #if GENERATE_COMPILE_STATS

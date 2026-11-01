@@ -271,7 +271,7 @@ std::string add_line_numbers(const std::string& code,
 }  // namespace
 #endif
 
-GlslangWrapper::CompileResults GlslangWrapper::glslToSpirv(
+ShaderCompilerBackend::CompileResults GlslangWrapper::compileMaterial(
     const std::vector<StageSource>& stages) {
   // These may become function parameters in the future so using constexpr
   // instead of #defines
