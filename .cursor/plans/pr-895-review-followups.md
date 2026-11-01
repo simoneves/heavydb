@@ -163,6 +163,7 @@ The SDK attribution was bundled with Slang's under "deferred pending OSRB", but 
 - If still unpublished, ask the user whether to cite the newest published summary (1.4.350.0 when last checked) as an interim, rather than deciding unilaterally.
 - Decided 2026-11-01: wait for the 1.4.363.0 summary rather than cite an interim. Re-probed that day: 1.4.363.0 and 1.4.363.1 both 404, 1.4.350.0 still the newest published. Leave `ThirdParty/licenses/` and the fork script's `@TODO(se)` as they are until it appears.
 - Slang: prepare `slang__LICENSE` (Apache-2.0 WITH LLVM-exception, from the `vulkan-sdk-1.4.363` tag) and the index entries as a separate commit that is **not** to be merged until OSRB clears. Building Slang into the deps prefix without linking or shipping it is the user's call on whether that already needs approval; flag it rather than assume.
+- Decided 2026-11-01: wait on everything licence-related for Slang. Prepare no Slang licence commit on any branch until OSRB clears; the findings above are kept for when it does.
 
 ## Proposed split of PR 895
 
