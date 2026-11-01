@@ -1,6 +1,6 @@
 ---
 name: glslang to slang migration
-overview: Replace glslang with Slang, sequenced as independently shippable PRs that each preserve full functionality, starting with a test safety net and ending with optional shader source migration. Originally eight; PR 5 has since split into 5a, 5b, 5c and 5d, and the SDK bump moved to the front after it turned out not to be gated. The "upgrade to Vulkan 1.4" goal is now satisfied in the toolchain and parked in the instance, since the 1.4 instance bump costs driver-matrix headroom and gains nothing; see PR 5d.
+overview: Replace glslang with Slang, sequenced as independently shippable PRs that each preserve full functionality, starting with a test safety net and ending with optional shader source migration. Originally eight; PR 5 has since split into 5a, 5b, 5c and 5d, and the SDK bump moved to the front after it turned out not to be gated. The "upgrade to Vulkan 1.4" goal is now satisfied in the toolchain and parked in the instance, since the 1.4 instance bump costs driver-matrix headroom and gains nothing; see PR 5d. This file is now the historical record of the original plan and its reasoning; for current status see remaining-slang-migration-work.md.
 todos:
   - id: spike-sdk
     content: "PR 0a: Spike the SDK bump to collect actual errors. Done: the tree builds and runs correctly on Vulkan SDK 1.4.363.0 with glslang 16.6.0, with the private headers still in place"
@@ -9,25 +9,25 @@ todos:
     content: "PR 0b: Compile all shader sources through slangc's GLSL compatibility mode (-allow-glsl) and count failures"
     status: pending
   - id: test-safety-net
-    content: "PR 1: Replace byte-exact SPIR-V golden comparison in ShaderCompilerTest.cpp with ShaderReflection text goldens plus spirv-val; add reflection-dump artifact via existing kSpvReflect hook. Landed as 95fb438ec0, all 9 goldens generated and the suite passes"
+    content: "PR 1: Replace byte-exact SPIR-V golden comparison in ShaderCompilerTest.cpp with ShaderReflection text goldens plus spirv-val; add reflection-dump artifact via existing kSpvReflect hook. Landed as 183c9fd7e4 (Replace byte-exact SPIR-V goldens with semantic assertions), all 9 goldens generated and the suite passes"
     status: completed
   - id: hygiene
-    content: "PR 2: Remove kShaderStageCount, harden glslang error-log scraping, collapse the vestigial multi-set scaffolding in ShaderRedecorator and delete ShaderReflection::validateSet, and fix the three ShaderReflection defects found during PR 1 by restoring the rule of zero. Landed as 34eed87b9a, no golden changed"
+    content: "PR 2: Remove kShaderStageCount, harden glslang error-log scraping, collapse the vestigial multi-set scaffolding in ShaderRedecorator and delete ShaderReflection::validateSet, and fix the three ShaderReflection defects found during PR 1 by restoring the rule of zero. Landed as 22e8ab86d6 (Remove vestigial shader compiler code and fix latent defects), no golden changed"
     status: completed
   - id: remove-tshaderirutils
-    content: "PR 3: Delete TShaderIRUtils and reimplement subroutine binding as a post-assembly textual pass over final_glsl, after includes are prepended"
-    status: pending
+    content: "PR 3: Delete TShaderIRUtils and reimplement subroutine binding as a post-assembly textual pass over final_glsl, after includes are prepended. Landed as c16ae41c47 (Resolve shader subroutines textually, delete TShaderIRUtils)"
+    status: completed
   - id: remove-iomapresolver
-    content: "PR 4: Link all stages of a material into a single glslang::TProgram using public mapIO(nullptr, nullptr); delete IoMapResolver, sentinels, and ShaderRedecorator's allocation logic, preserving clash diagnostics"
-    status: pending
+    content: "PR 4: Link all stages of a material into a single glslang::TProgram using public mapIO(nullptr, nullptr); delete IoMapResolver, sentinels, and ShaderRedecorator's allocation logic, preserving clash diagnostics. Landed in a different shape, as PR 4a (8386189a0b, Compile a material's shader stages in one call) and PR 4b (03bafb57a2, Assign bindings and locations with glslang's resolver): a program per stage sharing one resolver, since one TProgram cannot span the stages. IoMapResolver survives as a thin wrapper; the sentinels and the allocator are gone"
+    status: completed
   - id: sdk-bump
-    content: "PR 5a: Move the dependency tree to Vulkan SDK 1.4.363.0 with Slang built alongside glslang. Done ahead of PRs 3 and 4, which turned out not to gate it"
+    content: "PR 5a: Move the dependency tree to Vulkan SDK 1.4.363.0 with Slang built alongside glslang. Done ahead of PRs 3 and 4, which turned out not to gate it. Slang itself was left out of the target list when this landed and restored later; see vulkan-sdk-1.4.363-fork.md"
     status: completed
   - id: version-retarget
-    content: "PR 5b: Retarget the compiler to Vulkan 1.3 / SPIR-V 1.6, split VULKAN_API_VERSION into separate instance and device-minimum constants, and normalize the VulkanPhysicalDevice version gate, which turned out to be checking 1.2 while chaining 1.3 structs. Landed as 4752a50653, no golden changed"
+    content: "PR 5b: Retarget the compiler to Vulkan 1.3 / SPIR-V 1.6, split VULKAN_API_VERSION into separate instance and device-minimum constants, and normalize the VulkanPhysicalDevice version gate, which turned out to be checking 1.2 while chaining 1.3 structs. Landed as 35c779bebc (Target SPIR-V 1.6 and separate the Vulkan version decisions), no golden changed"
     status: completed
   - id: drop-private-headers
-    content: "PR 5c: Three parts with different dependencies. Parts 1 and 2 landed as d4019d84e6, deleting the dead build_info.h include and swapping glslang's disassembler for the SPIRV-Tools one, and took the two copy lines they freed with them after those turned out to have been redundant all along. Part 3, deleting the remaining 14-header copy block from common-functions.sh, still needs PRs 3 and 4"
+    content: "PR 5c: Three parts with different dependencies. Parts 1 and 2 landed as acbd16b1f6 (Drop two glslang private-header dependencies), deleting the dead build_info.h include and swapping glslang's disassembler for the SPIRV-Tools one, and took the two copy lines they freed with them after those turned out to have been redundant all along. Part 3, deleting the remaining 14-header copy block from common-functions.sh, still needs PRs 3 and 4. PRs 3 and 4 have since landed and left 13 copies; see remaining-slang-migration-work.md for why part 3 is still open"
     status: pending
   - id: instance-1.4
     content: "PR 5d: Raise the instance to Vulkan 1.4. Now a one-line change, but a deployment decision rather than a code one: it lifts the NVIDIA driver floor from 535 to roughly R570 and gains the compiler nothing, since 1.4 also tops out at SPIR-V 1.6. Take it only if something else needs 1.4"
@@ -45,6 +45,10 @@ isProject: false
 ---
 
 # Replacing glslang with Slang and upgrading the Vulkan SDK
+
+> **Historical record.** This is the original plan and the reasoning behind it, kept for that reason. It is superseded for status by [remaining-slang-migration-work.md](remaining-slang-migration-work.md), which also records where the work diverged from what is planned here. Where a section below was overtaken by events it carries a note saying so; otherwise read it as what was planned at the time, not as what is true now.
+>
+> Commit hashes are as of the rebase onto `master` that preceded the PR 895 review and change on every rebase, so each is given with its subject. Find a commit by subject with `git log --format='%h %s' master..HEAD`.
 
 ## Context
 
@@ -77,7 +81,7 @@ flowchart TD
 What this means for the rest of the plan:
 
 - The private headers are **technical debt, not a blocker**. PRs 3 and 4 remain worth doing, because the sentinel values are derived from glslang internals and `ShaderRedecorator` is the bulk of what Slang replaces, but they no longer hold back an SDK upgrade and can be sequenced on their own merits.
-- Removing the copy block from `common-functions.sh` and dropping `glslang/SPIRV/disassemble.h` becomes a cleanup pass tracked as PR 5c, rather than a precondition for the bump. Only the copy-block removal itself waits on PRs 3 and 4; the rest of 5c has since landed as d4019d84e6.
+- Removing the copy block from `common-functions.sh` and dropping `glslang/SPIRV/disassemble.h` becomes a cleanup pass tracked as PR 5c, rather than a precondition for the bump. Only the copy-block removal itself waits on PRs 3 and 4; the rest of 5c has since landed as acbd16b1f6.
 - The bump also supplied the second thing the migration needs: `slangc` and `slang.h` are now installed in the deps prefix, so the PR 0b spike is unblocked.
 
 For the record, the two dependencies that drive PRs 3 and 4:
@@ -144,6 +148,8 @@ PR 1 pins all of this, so a backend swap that drops part of the surface now fail
 
 `ShaderReflection` has no push-constant support; those are hand-maintained separately in [GfxDriver/Pipeline/PushConstantRanges.cpp](GfxDriver/Pipeline/PushConstantRanges.cpp).
 
+> Since added: `1bdb9c6ce7` (Reflect push constants and check every push against them) reflects push constant blocks and their members, and `Material` checks every push against them.
+
 ## PR 0 - Spikes (no production code)
 
 Two cheap experiments that decide branches below.
@@ -162,7 +168,7 @@ Note that stage files are not independently compilable: they depend on the `#inc
 
 ## PR 1 - Replace byte-exact SPIR-V goldens with semantic assertions
 
-**Landed as 95fb438ec0.** Had to land first, because every later PR changes SPIR-V output.
+**Landed as 183c9fd7e4.** Had to land first, because every later PR changes SPIR-V output.
 
 [Tests/RenderTests/ShaderCompiler/ShaderCompilerTest.cpp](Tests/RenderTests/ShaderCompiler/ShaderCompilerTest.cpp) previously asserted:
 
@@ -203,7 +209,7 @@ Reviewing the generated baseline also turned up the reflection array-dimension g
 
 ## PR 2 - Hygiene and dead code
 
-**Landed as 34eed87b9a.** No behaviour change, verified by the PR 1 suite: every `.reflect` golden is unchanged, which is the meaningful check since binding allocation order, the bindings map and the descriptor set number all stayed put. Net 24 lines removed across 6 files.
+**Landed as 22e8ab86d6.** No behaviour change, verified by the PR 1 suite: every `.reflect` golden is unchanged, which is the meaningful check since binding allocation order, the bindings map and the descriptor set number all stayed put. Net 24 lines removed across 6 files.
 
 ### What was done
 
@@ -243,6 +249,8 @@ Residual risk to note in review: targets reaching the shader via a literal `#inc
 
 No longer "the other half of the unpin", since PR 0a unpinned the SDK without either PR 3 or PR 4. What PR 4 still buys is deleting the sentinel scheme and most of `ShaderRedecorator`, which is the bulk of what Slang replaces in PR 7, plus the last of the private headers.
 
+> **Overtaken.** PR 4a showed the primary approach below cannot work, on both counts: one `TProgram` cannot span a material's stages, because a material may hold two shaders of the same stage, and `mapIO(nullptr, nullptr)` gives each stage its own resolver rather than one shared across the program. What landed instead is a program per stage sharing one `TDefaultGlslIoResolver`, in `8386189a0b` (Compile a material's shader stages in one call) and `03bafb57a2` (Assign bindings and locations with glslang's resolver). The reasoning is in remaining-slang-migration-work.md under "What PR 4a established". The original text is kept below.
+
 Primary approach: link all stages of a material into a single `glslang::TProgram` and let glslang's own default resolver assign coherent cross-stage bindings. `TProgram::mapIO(nullptr, nullptr)` is public API, so no private header and no shader source churn. `TDefaultGlslIoResolver` keys its slot map by name across stages, which is exactly the sharing semantics the sentinels currently emulate.
 
 Changes:
@@ -259,7 +267,7 @@ Rejected alternative, recorded so nobody spends a day on it: using glslang's pub
 
 ## PR 5a - Vulkan SDK 1.4.363.0 with Slang (done, landed early)
 
-The dependency tree now builds `loader glslang spirvcross vul layers slang` from a fork of the upstream 1.4.363.0 script. No longer gated on PRs 3 and 4, which is the plan's main correction. Details in [.cursor/plans/vulkan-sdk-1.4.363-fork.md](.cursor/plans/vulkan-sdk-1.4.363-fork.md).
+The dependency tree now builds `loader glslang spirvcross vul layers slang` from a fork of the upstream 1.4.363.0 script. (Not quite as landed: `slang` was left out of that list and only restored later. See the fork plan.) No longer gated on PRs 3 and 4, which is the plan's main correction. Details in [.cursor/plans/vulkan-sdk-1.4.363-fork.md](.cursor/plans/vulkan-sdk-1.4.363-fork.md).
 
 Two loose ends it deliberately left:
 
@@ -268,7 +276,7 @@ Two loose ends it deliberately left:
 
 ## PR 5b - Retarget the compiler to SPIR-V 1.6, still on glslang
 
-**Landed as 4752a50653.** The free half of the version work. The instance stays at 1.3 and became PR 5d.
+**Landed as 35c779bebc.** The free half of the version work. The instance stays at 1.3 and became PR 5d.
 
 ### What was done
 
@@ -291,7 +299,7 @@ No `.reflect` golden moved, which is the expected result since reflection record
 
 ## PR 5c - Drop the private headers
 
-Pure cleanup in three parts with different dependencies. **Parts 1 and 2 landed as d4019d84e6**, taking two of the copies with them; only part 3 is gated on PRs 3 and 4.
+Pure cleanup in three parts with different dependencies. **Parts 1 and 2 landed as acbd16b1f6**, taking two of the copies with them; only part 3 is gated on PRs 3 and 4.
 
 ### Who actually consumes the copied headers
 
@@ -359,6 +367,7 @@ Keep `ShaderReflection` unchanged and populate it from Slang reflection. Four be
 - The struct-flattening naming convention, the flattening block at `ShaderRedecorator.cpp:303-352` and the naming rule itself at 325-331: dotted names for nested UBO members, bare names for SSBO members, depended on verbatim by `Material` and the Vega property writers
 - `validate_buffer_attr_type`, which whitelists only scalar int/uint/int64/uint64/float/double; decide whether to carry the restriction forward
 - `ShaderReflection` cannot express an array dimension on a buffer member, and silently drops it. `SLAB_ADDRESS_TABLE_UBO` declares `SlabAddressTableEntry slabs[64]` ([QueryRenderer/Marks/shaders/slabAddressTable.glsl](QueryRenderer/Marks/shaders/slabAddressTable.glsl)), and the reflection records a `block_size` of 1024 alongside exactly two attrs, `slabs.cuda` at offset 0 and `slabs.vulkan` at offset 8, as though the array were a single element. Harmless today only because that block is bound whole via `bindExternalUniformBufferToBlock`, so nothing consumes the per-member offsets. Slang reflection will report the array properly, so decide deliberately whether to represent it or keep discarding it; either way the PR 1 golden for `pointTemplate.vert` changes, and that diff is expected rather than a regression. The same gap applies to `uDomains_x_x`, a `double[2]` reported as one 16-byte attr.
+  > Since done, ahead of PR 7: `578855b252` (Reflect the array dimension of a buffer member) records `array_length` and `array_stride` on buffer members.
 - Push constants, currently hand-maintained in [GfxDriver/Pipeline/PushConstantRanges.cpp](GfxDriver/Pipeline/PushConstantRanges.cpp) and absent from reflection, come free here
 
 ## PR 8+ - Migrate shader sources to Slang modules and generics
@@ -367,7 +376,7 @@ Largest effort, biggest long-term payoff, safely deferrable. Slang interfaces pl
 
 ## Open risks
 
-- Whether glslang's default GLSL I/O resolver assigns bindings coherently across stages in a single `TProgram` while respecting explicit bindings. Gates PR 4's primary approach; the fallback is documented above.
+- ~~Whether glslang's default GLSL I/O resolver assigns bindings coherently across stages in a single `TProgram` while respecting explicit bindings. Gates PR 4's primary approach; the fallback is documented above.~~ Resolved by PR 4a and 4b: not in a single `TProgram`, but a single resolver shared across per-stage programs does it.
 - How many of the 161 shader sources clear Slang's GLSL subset. Gates PR 6 onward, and is what spike 0b measures. Only the 76 outside `Tests/` are genuinely load-bearing, so the spike should split its counts that way.
 - Slang OSRB approval. Not a technical risk but a hard gate on shipping anything from PR 6 onward, and entirely outside this plan's control, so start it now rather than when the code is ready.
 

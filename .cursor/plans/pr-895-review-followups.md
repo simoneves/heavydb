@@ -3,29 +3,29 @@ name: PR 895 review follow-ups
 overview: Act on the review of PR 895 (branch simoneves_renderer_upgrade_2026 at 29f3f9c88b). Three code fixes with tests, three smaller code cleanups, a full reconciliation of the existing plan files with what the branch actually contains, the SDK licence update that no longer waits on OSRB, and a proposed split of the PR into four. Slang is being re-added to the install_vulkan target list by the user, which unblocks PR 0b, but PR 0b itself is out of scope here.
 todos:
   - id: slang-rebuild
-    content: "User: re-add slang to the install_vulkan target list and provide a build container with the rebuilt deps prefix. Gates the verification steps of every other item, and makes PR 0b possible afterwards"
-    status: pending
+    content: "User: re-add slang to the install_vulkan target list and provide a build container with the rebuilt deps prefix. Gates the verification steps of every other item, and makes PR 0b possible afterwards Done: container laughing_noyce has slangc and include/slang in the prefix. The script change itself is still uncommitted in the working tree."
+    status: completed
   - id: fix-lost-link-error
-    content: "Fix 1: a link or getIntermediate failure in stage i > 0 of glslToSpirv surfaces as a generic error on stage 0, losing the real message. Make every early return carry the failure to the whole material. Add a ShaderCompilerTest case with a second stage that parses but fails to link"
-    status: pending
+    content: "Fix 1: a link or getIntermediate failure in stage i > 0 of glslToSpirv surfaces as a generic error on stage 0, losing the real message. Make every early return carry the failure to the whole material. Add a ShaderCompilerTest case with a second stage that parses but fails to link Done in 5edddf49f3 (Report a later stage's link failure instead of a generic error), test LinkFailureInLaterStageTest."
+    status: completed
   - id: fix-push-constant-lookup
-    content: "Fix 2: Material::validatePushConstantRange accepts or rejects on the first stage that knows the name, so two stages sharing an instance name with different spans (PolyMark's capture shaders both use pushConstants) reject a valid push. Accept if any stage covers the range; move the logic somewhere testable without a device and test the shared-instance-name case"
-    status: pending
+    content: "Fix 2: Material::validatePushConstantRange accepts or rejects on the first stage that knows the name, so two stages sharing an instance name with different spans (PolyMark's capture shaders both use pushConstants) reject a valid push. Accept if any stage covers the range; move the logic somewhere testable without a device and test the shared-instance-name case Done in f40ae23ef9 (Accept a push that any stage of the material covers): the logic is now the free function validate_push_constant_range in ShaderReflection, test PushConstantSharedNameTest."
+    status: completed
   - id: fix-subroutine-chaining
-    content: "Fix 3: rebindSubroutineCalls applies the rebind map one entry at a time over an unordered_map, so A->B plus B->C chains or not depending on iteration order. Find all call sites against the unmodified text first, then apply every replacement in one back-to-front pass. Test with a two-entry chain"
-    status: pending
+    content: "Fix 3: rebindSubroutineCalls applies the rebind map one entry at a time over an unordered_map, so A->B plus B->C chains or not depending on iteration order. Find all call sites against the unmodified text first, then apply every replacement in one back-to-front pass. Test with a two-entry chain Done in c6d95bee06 (Apply all subroutine bindings in one pass so they cannot chain). The test, SubroutineSwapTest, uses a swap rather than a chain, since a chain goes wrong in only one of its two iteration orders and so could pass by luck."
+    status: completed
   - id: definition-heuristic-note
-    content: "Cleanup: find_function_references treats a forward declaration as a definition and a call preceded by an identifier (e.g. inside a macro body) as a definition. Exclude prototypes from has_function_definition; document the macro limitation next to the existing preprocessor note"
-    status: pending
+    content: "Cleanup: find_function_references treats a forward declaration as a definition and a call preceded by an identifier (e.g. inside a macro body) as a definition. Exclude prototypes from has_function_definition; document the macro limitation next to the existing preprocessor note Done in ecf3fa5aed (Do not treat a function prototype as a rebinding target), test SubroutinePrototypeTest: a declaration counts as a definition only if the first { or ; after its parameter list is a {, skipping comments and preprocessor lines."
+    status: completed
   - id: stale-comments
-    content: "Cleanup: remove references to the plan's PR numbering from production code and tests, which will dangle once the DROP commits are dropped, and correct test comments that still describe sentinels, unconditional vertex attribute reassignment from 0, and redecorateInternal's set parameter"
-    status: pending
+    content: "Cleanup: remove references to the plan's PR numbering from production code and tests, which will dangle once the DROP commits are dropped, and correct test comments that still describe sentinels, unconditional vertex attribute reassignment from 0, and redecorateInternal's set parameter Done in e0e8d87820 (Correct stale comments about the redecorator and its tests)."
+    status: completed
   - id: artifact-extension
-    content: "Cleanup: write the kSpvReflect artifact as .reflect rather than .reflection so it matches the golden extension, and update the ShaderCompiler README"
-    status: pending
+    content: "Cleanup: write the kSpvReflect artifact as .reflect rather than .reflection so it matches the golden extension, and update the ShaderCompiler README Done in 3fe928e579 (Name the reflection artifact .reflect to match the goldens). The SPIRV-Cross dump keeps its pre-existing .spv.reflection name."
+    status: completed
   - id: reconcile-plans
-    content: "Docs: bring the three existing plan files into line with the branch: Slang build state, rebased commit hashes, stale todo statuses and superseded sections, wrong line numbers, and an internal contradiction in the remaining-work file"
-    status: pending
+    content: "Docs: bring the three existing plan files into line with the branch: Slang build state, rebased commit hashes, stale todo statuses and superseded sections, wrong line numbers, and an internal contradiction in the remaining-work file Done in the (DROP) commit that carries this update."
+    status: completed
   - id: sdk-licence
     content: "Licences: update ThirdParty/licenses for the Vulkan SDK 1.4.363.0, which never needed OSRB. With Slang back in the build, also prepare (but do not merge) the Slang attribution, which does"
     status: pending
@@ -122,7 +122,7 @@ These are edits to `.cursor/plans/`, which travel in DROP commits; do them as on
 
 **All three files:**
 
-- Slang. At the time of review it was not built: `27c0a246a1` removed it from the target list. Once the user's change re-adds it, the plans' description becomes true again, but the history should say it was deferred and restored rather than imply it was always there. PR 0b's "unblocked since PR 5a" becomes "unblocked once Slang was restored to the build".
+- Slang. At the time of review it was not built: the target list in `27c0a246a1` never included it, though the fork plan said to add it. Once the user's change re-adds it, the plans' description becomes true again, but the history should say it was deferred and restored rather than imply it was always there. PR 0b's "unblocked since PR 5a" becomes "unblocked once Slang was restored to the build".
 - Commit hashes. Every hash cited for landed work is from before the rebase and no longer on any branch. Replace with the current ones. Mapping, by commit subject:
 
   | Cited | Current | Subject |

@@ -2,6 +2,9 @@
 name: Remaining Slang migration work
 overview: A standalone working document for the pieces of the glslang-to-Slang migration that have not yet landed, with the dependencies between them made explicit. Six remain. Four items originally filed under PR 7 needed nothing from Slang and landed separately, as did one unscheduled cleanup they turned up. The completed work is summarised only briefly, except where it established something a later PR has to reproduce; the full archaeology stays in the existing plan.
 todos:
+  - id: restore-slang
+    content: "Restore slang to the ./vulkansdk target list in install_vulkan. PR 5a's plan added it, but the commit that landed left it out, so Slang was not in the deps prefix until this. Predecessor of PR 0b and PR 6. Made in the working tree, not yet committed at the time of writing; mark completed when it lands"
+    status: in_progress
   - id: osrb
     content: Slang OSRB approval and attribution. External gate on merging PR 6 onward; start now, independent of all code work
     status: pending
@@ -9,13 +12,13 @@ todos:
     content: "PR 0b: Compile the shader corpus through slangc -allow-glsl and classify failures, reporting Tests/ and non-Tests/ counts separately. Prefer assembled final_glsl over raw sources. No dependencies; gates the scope of PRs 6, 7 and 8"
     status: pending
   - id: remove-tshaderirutils
-    content: "PR 3: Delete TShaderIRUtils and reimplement subroutine binding as a textual pass, resolving targets through the Library because the assembled source holds #include directives rather than their text. Landed as 9b8be38b08, no golden changed. Retired one copied header rather than the three estimated"
+    content: "PR 3: Delete TShaderIRUtils and reimplement subroutine binding as a textual pass, resolving targets through the Library because the assembled source holds #include directives rather than their text. Landed as c16ae41c47, no golden changed. Retired one copied header rather than the three estimated"
     status: completed
   - id: compile-material-at-once
-    content: "PR 4a: Give glslToSpirv and buildSpirv a whole material at a time, with a program per stage and one shared I/O resolver. Landed as d2fbb038a8, no behaviour change and no golden moved. Established that one TProgram cannot span the stages, because a material may hold two shaders of the same stage"
+    content: "PR 4a: Give glslToSpirv and buildSpirv a whole material at a time, with a program per stage and one shared I/O resolver. Landed as 8386189a0b, no behaviour change and no golden moved. Established that one TProgram cannot span the stages, because a material may hold two shaders of the same stage"
     status: completed
   - id: remove-iomapresolver
-    content: "PR 4b: Replace IoMapResolver with glslang's TDefaultGlslIoResolver, delete the three sentinels and ShaderRedecorator's allocation and SPIR-V patching, and re-aim the clash check at verifying glslang's output. Landed as f0bea7b8b7. Two of the nine goldens moved, and it corrected a long-standing bug that gave an array of resources one binding per element. Did not unblock PR 5c part 3 after all"
+    content: "PR 4b: Replace IoMapResolver with glslang's TDefaultGlslIoResolver, delete the three sentinels and ShaderRedecorator's allocation and SPIR-V patching, and re-aim the clash check at verifying glslang's output. Landed as 03bafb57a2. Two of the nine goldens moved, and it corrected a long-standing bug that gave an array of resources one binding per element. Did not unblock PR 5c part 3 after all"
     status: completed
   - id: drop-copy-block
     content: "PR 5c part 3: Delete the 13-header copy block and the two mkdir guards from common-functions.sh. Now needs PR 7, not PR 4b: GlslangWrapper.cpp still includes iomapper.h for TGlslIoMapper and TDefaultGlslIoResolver, which are declared nowhere public. Verify with a full deps rebuild, since these 13 are genuinely not installed by glslang"
@@ -33,19 +36,22 @@ todos:
     content: "PR 8+: Migrate shader sources to Slang modules and generics incrementally behind the PR 6 flag, retiring the string-splicing Builder and superseding PR 3's textual subroutine pass"
     status: pending
   - id: varying-check
-    content: "Non-Slang: Reject an inter-stage varying with no explicit location. Landed as f335583933. Three exemptions were needed, each of which rejected real shaders before it was added: vertex inputs and fragment outputs, built-in members of gl_PerVertex, and blocks carrying one location for the whole block"
+    content: "Non-Slang: Reject an inter-stage varying with no explicit location. Landed as 8bbb7388ba. Three exemptions were needed, each of which rejected real shaders before it was added: vertex inputs and fragment outputs, built-in members of gl_PerVertex, and blocks carrying one location for the whole block"
     status: completed
   - id: createcache-test
-    content: "Non-Slang: Cover ShaderManager::createCache. Landed as cb950d202f, pinning the empty reflection as the documented contract rather than making it populate one"
+    content: "Non-Slang: Cover ShaderManager::createCache. Landed as 6ceeabcdb2, pinning the empty reflection as the documented contract rather than making it populate one"
     status: completed
   - id: reflect-array-dim
-    content: "Non-Slang: Let ShaderReflection express an array dimension on a buffer member. Landed as b4c9acc131. Found a live two-dimensional member, PPLL's batch_stats, which is flattened to element count and element stride to match how PPLLRender reads it back"
+    content: "Non-Slang: Let ShaderReflection express an array dimension on a buffer member. Landed as 578855b252. Found a live two-dimensional member, PPLL's batch_stats, which is flattened to element count and element stride to match how PPLLRender reads it back"
     status: completed
   - id: reflect-push-constants
-    content: "Non-Slang: Reflect push constants and check every push against them. Landed as 02527b6f9b. The dead name parameter on setPushConstants became the key. Deriving the pipeline-creation ranges from reflection is left to PR 7"
+    content: "Non-Slang: Reflect push constants and check every push against them. Landed as 1bdb9c6ce7. The dead name parameter on setPushConstants became the key. Deriving the pipeline-creation ranges from reflection is left to PR 7"
     status: completed
   - id: dead-accum-composite
-    content: "Cleanup: delete the dead accumulationComposite.frag. Landed as 31cc64861c, two files and 25 deletions. Its last consumer went with distributed mode in f20941c8ef, leaving only the source and its ShaderManifest.json entry"
+    content: "Cleanup: delete the dead accumulationComposite.frag. Landed as 1ef9490600 (Delete the dead accumulationComposite.frag), two files and 25 deletions. Its last consumer went with distributed mode in f20941c8ef, leaving only the source and its ShaderManifest.json entry"
+    status: completed
+  - id: pr895-review-fixes
+    content: "Non-Slang: fixes from the PR 895 review, tracked in pr-895-review-followups.md. A later stage's link failure is reported instead of a generic error, a push is accepted if any stage covers it, subroutine bindings apply in one pass so they cannot chain, and a prototype is not taken for a rebinding target"
     status: completed
 isProject: false
 ---
@@ -54,30 +60,34 @@ isProject: false
 
 Companion to [.cursor/plans/glslang-to-slang-migration.md](.cursor/plans/glslang-to-slang-migration.md), which keeps the full history and the reasoning behind decisions already taken. This file covers only what is left.
 
+Commit hashes are as of the rebase onto `master` that preceded the PR 895 review and change on every rebase. Find a commit by its subject with `git log --format='%h %s' master..HEAD`; from now on, cite the subject alongside the hash.
+
 ## What has already landed
 
 - **PR 0a** - Spiked and kept the SDK bump. The tree builds and runs on Vulkan SDK 1.4.363.0 with glslang 16.6.0. This disproved the plan's central premise: the private headers were never what pinned the SDK, so PRs 3 and 4 do not gate anything except their own cleanup.
-- **PR 1** (`95fb438ec0`) - Replaced byte-exact SPIR-V goldens with `ShaderReflection` text goldens plus `spirv-val`. Nine `.reflect` files. This is the safety net every remaining PR is verified against.
-- **PR 2** (`34eed87b9a`) - Hygiene: deleted `kShaderStageCount`, hardened glslang error-log scraping, collapsed the vestigial multi-set scaffolding, restored the rule of zero on `ShaderReflection`.
-- **PR 5a** - Vulkan SDK 1.4.363.0 with Slang built alongside glslang. `slangc` and `slang.h` are now in the deps prefix.
-- **PR 5b** (`4752a50653`) - Retargeted the compiler to Vulkan 1.3 / SPIR-V 1.6, split `VULKAN_API_VERSION` into instance and device-minimum constants, fixed a `VulkanPhysicalDevice` gate that tested 1.2 while chaining 1.3 structs.
-- **PR 5c parts 1 and 2** (`d4019d84e6`) - Deleted the dead `build_info.h` include and swapped glslang's disassembler for the SPIRV-Tools one. The copy block in `scripts/common-functions.sh` is down from 16 files to 14.
-- **PR 3** (`9b8be38b08`) - Deleted `TShaderIRUtils` and moved subroutine resolution to a textual pass in `ShaderManager`, run before glslang sees the source. Took the copy block from 14 files to 13.
-- **PR 4a** (`d2fbb038a8`) - Restructured `glslToSpirv` and `buildSpirv` to take a whole material at a time, giving each stage its own `glslang::TProgram` but sharing one I/O resolver between them. Pure plumbing: the resolver is still our stateless `IoMapResolver`, so no behaviour changed and no golden moved.
-- **PR 4b** (`f0bea7b8b7`) - Handed binding and location assignment to `glslang::TDefaultGlslIoResolver`, reducing `ShaderRedecorator` to reflection extraction plus a clash check and deleting the sentinels, the allocator and the SPIR-V patching. Two of the nine goldens moved. Corrected a long-standing bug in which an array of resources was given one binding per element rather than a single binding with a descriptor count.
+- **PR 1** (`183c9fd7e4`) - Replaced byte-exact SPIR-V goldens with `ShaderReflection` text goldens plus `spirv-val`. Nine `.reflect` files. This is the safety net every remaining PR is verified against.
+- **PR 2** (`22e8ab86d6`) - Hygiene: deleted `kShaderStageCount`, hardened glslang error-log scraping, collapsed the vestigial multi-set scaffolding, restored the rule of zero on `ShaderReflection`.
+- **PR 5a** - Vulkan SDK 1.4.363.0, with Slang meant to be built alongside glslang. As landed, `slang` was missing from the `./vulkansdk` target list, so Slang was not actually in the deps prefix; it was restored afterwards (the `restore-slang` item), which puts `slangc` and `slang.h` there.
+- **PR 5b** (`35c779bebc`) - Retargeted the compiler to Vulkan 1.3 / SPIR-V 1.6, split `VULKAN_API_VERSION` into instance and device-minimum constants, fixed a `VulkanPhysicalDevice` gate that tested 1.2 while chaining 1.3 structs.
+- **PR 5c parts 1 and 2** (`acbd16b1f6`) - Deleted the dead `build_info.h` include and swapped glslang's disassembler for the SPIRV-Tools one. The copy block in `scripts/common-functions.sh` is down from 16 files to 14.
+- **PR 3** (`c16ae41c47`) - Deleted `TShaderIRUtils` and moved subroutine resolution to a textual pass in `ShaderManager`, run before glslang sees the source. Took the copy block from 14 files to 13.
+- **PR 4a** (`8386189a0b`) - Restructured `glslToSpirv` and `buildSpirv` to take a whole material at a time, giving each stage its own `glslang::TProgram` but sharing one I/O resolver between them. Pure plumbing: the resolver is still our stateless `IoMapResolver`, so no behaviour changed and no golden moved.
+- **PR 4b** (`03bafb57a2`) - Handed binding and location assignment to `glslang::TDefaultGlslIoResolver`, reducing `ShaderRedecorator` to reflection extraction plus a clash check and deleting the sentinels, the allocator and the SPIR-V patching. Two of the nine goldens moved. Corrected a long-standing bug in which an array of resources was given one binding per element rather than a single binding with a descriptor count.
+
+- **PR 895 review fixes** - See [pr-895-review-followups.md](pr-895-review-followups.md). `5edddf49f3` (Report a later stage's link failure instead of a generic error), `f40ae23ef9` (Accept a push that any stage of the material covers), `c6d95bee06` (Apply all subroutine bindings in one pass so they cannot chain), `ecf3fa5aed` (Do not treat a function prototype as a rebinding target), plus two cleanups: `e0e8d87820` (Correct stale comments about the redecorator and its tests) and `3fe928e579` (Name the reflection artifact .reflect to match the goldens). Each fix has a test that fails without it, and no golden moved.
 
 ### Four items taken outside the PR sequence
 
 Each was filed under PR 7 but needs nothing from Slang, and each is better as its own commit than as a line in PR 7's diff: the golden movement stays attributable, and the behaviour is pinned by tests before Slang has to reproduce it. All four have landed.
 
-- **Varying locations** (`f335583933`) - Rejects an inter-stage varying that arrives without an explicit location, which glslang would otherwise match across stages only by luck of declaration order. Three exemptions were needed and each one rejected real shaders before it was added: vertex inputs and fragment outputs, which are matched against the reflection rather than another stage; built-in members of the implicit `gl_PerVertex` block, which is what made the first attempt reject all five vertex shaders; and blocks carrying one location for the whole block, the form every mesh and task shader uses.
-- **`createCache` coverage** (`cb950d202f`) - Pins the empty reflection as the documented contract rather than making the method populate one. Its only caller, `saveArtifacts`, reads just the GLSL and SPIR-V, so a regression would have shown up as missing artifacts rather than a failing test.
-- **Array dimensions** (`b4c9acc131`) - `ItemInfo` gained `array_length` and `array_stride`, so element *i* of a buffer member is at `offset + i * array_stride`. See below for the two-dimensional member this turned up.
-- **Push constants** (`02527b6f9b`) - Reflected into new `push_constants` and `push_constant_attrs` sections, and every push is now checked against them. See below.
+- **Varying locations** (`8bbb7388ba`) - Rejects an inter-stage varying that arrives without an explicit location, which glslang would otherwise match across stages only by luck of declaration order. Three exemptions were needed and each one rejected real shaders before it was added: vertex inputs and fragment outputs, which are matched against the reflection rather than another stage; built-in members of the implicit `gl_PerVertex` block, which is what made the first attempt reject all five vertex shaders; and blocks carrying one location for the whole block, the form every mesh and task shader uses.
+- **`createCache` coverage** (`6ceeabcdb2`) - Pins the empty reflection as the documented contract rather than making the method populate one. Its only caller, `saveArtifacts`, reads just the GLSL and SPIR-V, so a regression would have shown up as missing artifacts rather than a failing test.
+- **Array dimensions** (`578855b252`) - `ItemInfo` gained `array_length` and `array_stride`, so element *i* of a buffer member is at `offset + i * array_stride`. See below for the two-dimensional member this turned up.
+- **Push constants** (`1bdb9c6ce7`) - Reflected into new `push_constants` and `push_constant_attrs` sections, and every push is now checked against them. See below.
 
 ### One cleanup they turned up
 
-- **Deleted the dead `accumulationComposite.frag`** (`31cc64861c`) - Found while reflecting push constants, as a block nothing ever pushes. Its last consumer was `DistributedCompositor::initResources`, so removing distributed mode in `f20941c8ef` deleted the caller and dropped `distributedCompositor.frag` from the manifest but left this one compiling into the shader library with no material to instantiate it. `MultiGpuCompositor` had been its other consumer until `5612fa7547` removed the compositor-side accum texture array in 2021; the live sibling there is the peer variant. Two files, the source and its `ShaderManifest.json` entry, that file being the only thing that decides what enters the library.
+- **Deleted the dead `accumulationComposite.frag`** (`1ef9490600`) - Found while reflecting push constants, as a block nothing ever pushes. Its last consumer was `DistributedCompositor::initResources`, so removing distributed mode in `f20941c8ef` deleted the caller and dropped `distributedCompositor.frag` from the manifest but left this one compiling into the shader library with no material to instantiate it. `MultiGpuCompositor` had been its other consumer until `5612fa7547` removed the compositor-side accum texture array in 2021; the live sibling there is the peer variant. Two files, the source and its `ShaderManifest.json` entry, that file being the only thing that decides what enters the library.
 
   Worth carrying into PR 8's sweeps: the name is a prefix of `accumulationCompositePeer.frag`, so a plain search for it matches the live sibling and it reads as referenced when it is not. Anything that walks the library looking for dead shaders needs a word-boundary match, not a substring one.
 
@@ -85,6 +95,7 @@ Each was filed under PR 7 but needs nothing from Slang, and each is better as it
 
 ```mermaid
 flowchart TD
+    Slang["Restore Slang to the deps build (in progress)"]
     OSRB["Slang OSRB approval (external, start now)"]
     PR0b["PR 0b: slangc -allow-glsl spike"]
     PR5c3["PR 5c part 3: delete the 13-header copy block"]
@@ -93,6 +104,8 @@ flowchart TD
     PR7["PR 7: Slang becomes the default"]
     PR8["PR 8+: migrate shaders to Slang modules"]
 
+    Slang --> PR0b
+    Slang --> PR6
     PR0b --> PR6
     OSRB --> PR6
     PR6 --> PR7
@@ -110,7 +123,7 @@ The cleanup track no longer exists as a separate thing. It was meant to be PRs 3
 
 ## PR 0b - Spike slangc's GLSL compatibility mode
 
-**Depends on:** nothing. Unblocked since PR 5a installed `slangc` at `$PREFIX/bin/slangc`.
+**Depends on:** Slang being in the deps build. Unblocked once Slang was restored to it, which installs `slangc` at `$PREFIX/bin/slangc`. (PR 5a was meant to do this and did not; see above.)
 **Gates:** the scope of PRs 6, 7 and 8.
 
 Compile the shader corpus through `slangc -allow-glsl` and classify each file three ways: compiles clean, fails on something mechanical and pattern-fixable, or fails on something Slang's GLSL subset does not model (which forces that shader into the PR 8 bucket early).
@@ -126,7 +139,7 @@ Two findings from landing it change how later PRs should be scoped.
 
 **The assembled source does not contain its includes.** `buildExtensionAndIncludesString` emits `#include` directives, because `Library` wraps each dictionary entry as `"#include \"...\""`, and `GlslangIncluder` resolves them during parse. So `final_glsl` names its includes without holding their text. The subroutine pass has to look targets up through the Library, since the colour conversion subroutines are defined only in an included file. Any backend that replaces glslang inherits this: it needs its own answer for the include dictionary, not just for the assembled string.
 
-**Textual inspection of the shader library has to survive the preprocessor.** `quantitativeScaleTemplate.vert` selects the type of a function's last parameter with an `#if`, and in one case leaves the body on the far side of the `#endif`. Neither a parameter-list pattern nor brace-matching can classify those definitions; what works is that a definition names its return type immediately before the function name. Worth remembering before writing any further pass over GLSL text.
+**Textual inspection of the shader library has to survive the preprocessor.** `quantitativeScaleTemplate.vert` selects the type of a function's last parameter with an `#if`, and in one case leaves the body on the far side of the `#endif`. Neither a parameter-list pattern nor brace-matching can classify those definitions; what works is that a declaration names its return type immediately before the function name. Telling a definition from a prototype then takes one more step, added after the PR 895 review: the first `{` or `;` after the `(` decides it, skipping comments and preprocessor lines. Worth remembering before writing any further pass over GLSL text.
 
 ## What PR 4a established, which PR 4b builds on
 
@@ -148,13 +161,13 @@ Four findings, three of them constraints on anything that touches this code agai
 
 **An array of resources is one binding, not one per element.** `ShaderRedecorator` had always claimed a binding per element, so arrays left gaps after them. `VulkanMaterial` has meanwhile always built a single `VkDescriptorSetLayoutBinding` with `descriptorCount` set to the array size, so the runtime only ever used the first binding of each array and the rest were silently wasted. glslang assigns the Vulkan way, which is what surfaced it: `numBindings` in `TDefaultGlslIoResolver::resolveBinding` is the cumulative array size only when the target is OpenGL. The array size still belongs in the reflection, which is where the descriptor count comes from; it just has nothing to do with occupancy.
 
-**Inter-stage varyings must declare explicit locations, and blocks must declare them per member.** Both are already true of the whole shader library, and both are now load-bearing. A block whose members carry locations must not also get one on the block variable, which is why `IoMapResolver::resolveInOutLocation` declines to assign to structs; glslang only skips blocks whose first member is a built-in, and the Vulkan path in `TDefaultIoResolverBase` behaves the same way. Separately, glslang's own comment on that Vulkan path is that it "does not do proper cross-stage lining up", so a varying *without* an explicit location would be matched across stages only by luck of declaration order. Nothing checks for that; adding a check is cheap if it ever seems worth it.
+**Inter-stage varyings must declare explicit locations, and blocks must declare them per member.** Both are already true of the whole shader library, and both are now load-bearing. A block whose members carry locations must not also get one on the block variable, which is why `IoMapResolver::resolveInOutLocation` declines to assign to structs; glslang only skips blocks whose first member is a built-in, and the Vulkan path in `TDefaultIoResolverBase` behaves the same way. Separately, glslang's own comment on that Vulkan path is that it "does not do proper cross-stage lining up", so a varying *without* an explicit location would be matched across stages only by luck of declaration order. That is now rejected; see the varying-locations item (`8bbb7388ba`) above.
 
 **glslang assigns only to resources it considers live.** `resolveBinding` auto-assigns when `ent.live && doAutoBindingMapping()`, and the shader library routinely declares resources a given stage never reads. Since `ShaderReflection` is what `VulkanMaterial` binds descriptors from, an unassigned resource is both missing from the reflection and liable to collide, every unassigned one defaulting to binding zero. `IoMapResolver` forces the liveness flag, restoring the one behaviour the old resolver had that glslang's does not. This is the only liveness gate that matters; `resolveInOutLocation` has none.
 
 Two things stayed true as planned. Clash detection could not be delegated: `reserveSlot` explicitly "tolerate[s] aliasing, by not double-recording aliases", and the only clash glslang reports is one name carrying different explicit bindings across stages, which is the opposite of what `ShaderRedecoratorClashTest` exercises. And `setShiftUboBinding` and friends remain a dead end, since `resolveBinding` adds the shift base to explicitly declared bindings too.
 
-Only two of the nine goldens moved, rather than all of them as predicted, because most of the corpus binds explicitly. PR 4b also left `createCache` unverified, its one live caller `saveArtifacts` passing `nullptr` as the redecorator; `cb950d202f` has since covered it, pinning the empty reflection as the contract `ShaderManager.h` already documented.
+Only two of the nine goldens moved, rather than all of them as predicted, because most of the corpus binds explicitly. PR 4b also left `createCache` unverified, its one live caller `saveArtifacts` passing `nullptr` as the redecorator; `6ceeabcdb2` has since covered it, pinning the empty reflection as the contract `ShaderManager.h` already documented.
 
 ## What the four non-Slang items established, which PR 7 inherits
 
@@ -176,7 +189,7 @@ All four are reflection behaviour, so PR 7 has to reproduce them from Slang rath
 
 PR 4b was supposed to be that, by removing the `TIoMapResolver` subclass. It had the opposite effect: `IoMapResolver` now needs `TGlslIoMapper` and `TDefaultGlslIoResolver` by name, and both are declared only in the private `iomapper.h`. The public `ShaderLang.h` has `TIoMapResolver`, and 16.6.0 did promote `TVarEntryInfo` into it, which is what made this look tractable, but it declares neither mapper nor any concrete resolver. The only concrete resolver in the private header is the OpenGL one; the Vulkan `TDefaultIoResolver` is defined inside `iomapper.cpp` and is unreachable by design, which is why `mapIO(nullptr, nullptr)` has to construct it internally.
 
-So the headers survive until glslang itself goes, in PR 7. Delete the block and the two surviving `mkdir -p` guards at `scripts/common-functions.sh:1092-1108`, plus the comment at 1077-1082.
+So the headers survive until glslang itself goes, in PR 7. In `install_vulkan` in `scripts/common-functions.sh`, delete the `\cp source/glslang/...` lines that follow the `# also add these non-default glslang headers` comment, that comment, and the two `mkdir -p ${ARCH}/include/glslang/...` guards with the comment above them. Find them by content: the Slang restoration shifts the line numbers, and the pin comment above `VULKAN_VERSION` that an earlier version of this plan also said to delete is already gone.
 
 PR 3 was expected to take three of these and took one, `Include/InfoSink.h`. The rest survived because `LiveTraverser.h`, which PR 0a gave `GlslangWrapper.cpp` a direct include of, pulls in `Common.h`, `reflection.h`, `localintermediate.h` and `gl_types.h`, with `intermediate.h` and the rest of `Include/` behind those.
 
@@ -219,6 +232,8 @@ Keep `ShaderReflection` unchanged and populate it from Slang reflection. Seven b
 - **Push constant reflection**, now `push_constants` and `push_constant_attrs`. The span rule, the dual naming and the anonymous-block case are all asserted.
 - **The push range check** in `Material::validatePushConstantRange`, which every `setPushConstants` call now goes through. Whatever replaces the reflection has to keep resolving a name to a block or a member, or every push in the tree throws.
 - **Explicit varying locations**, rejected in `GlslangWrapper.cpp` rather than in the redecorator, so this one moves with the backend rather than with `ShaderRedecorator`. Its three exemptions are the part to preserve; each was arrived at by a shader failing.
+
+One limitation PR 7 should confirm Slang removes rather than assume it does, found in the PR 895 review: stages are resolved one after another, so a binding auto-assigned in an earlier stage can take a number that a later stage declares explicitly for a different resource. `recordBinding`'s clash check catches it, and the old allocator had the same limitation, so it is not a regression. Slang resolving the composed program at once should remove it; check with a test that declares the explicit binding only in the later stage.
 
 Two things that were on this list are no longer: the array-dimension gap and push constants both landed separately, so their golden movement is already absorbed rather than arriving inside PR 7's diff.
 

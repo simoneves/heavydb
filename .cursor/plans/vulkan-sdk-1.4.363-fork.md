@@ -1,19 +1,19 @@
 ---
 name: vulkan sdk 1.4.363 fork
-overview: Fork the LunarG 1.4.363.0 vulkansdk build script with our WSI and loader-path modifications, add Slang to the build, and update common-functions.sh so the PR 0 spike can attempt the SDK bump.
+overview: Fork the LunarG 1.4.363.0 vulkansdk build script with our WSI and loader-path modifications, add Slang to the build, and update common-functions.sh so the PR 0 spike can attempt the SDK bump. Done; the spike succeeded. Slang was left out of the target list when this landed and restored afterwards; see the status note.
 todos:
   - id: fork-script
     content: Create ThirdParty/vulkan/vulkansdk-1.4.363.0 from the upstream 1.4.363 script with corrected provenance header, the three WSI flags re-applied to build_loader and build_validation_layers, and build_loader's --install-prefix reverted to $ARCHDIR
     status: completed
   - id: common-functions
-    content: "Update install_vulkan in scripts/common-functions.sh: bump VULKAN_VERSION to 1.4.363.0, replace the pin comment, add slang to the target list, and add mkdir -p for the glslang private-header destination directories"
+    content: "Update install_vulkan in scripts/common-functions.sh: bump VULKAN_VERSION to 1.4.363.0, replace the pin comment, add slang to the target list, and add mkdir -p for the glslang private-header destination directories. As landed (27c0a246a1, Add Vulkan 1.4.363.0 build script fork, and adapt install_vulkan) the target list did not include slang; it was restored later by a separate change"
     status: completed
   - id: licenses
-    content: "Deferred pending OSRB approval for slang: add the Vulkan SDK license summary and a Slang license file, and register Slang in ThirdParty/licenses/index.md and index.txt"
+    content: "Split in two. The Vulkan SDK licence summary never needed OSRB and is tracked by the sdk-licence item in pr-895-review-followups.md. The Slang licence file and index entries remain deferred pending OSRB"
     status: pending
   - id: run-spike
-    content: "Hand off to the user to run the deps build and the heavydb configure/build, since the agent cannot build here; they report back the FindGlslang and private-header failures verbatim as input to PRs 3, 4, and 5"
-    status: pending
+    content: "Hand off to the user to run the deps build and the heavydb configure/build, since the agent cannot build here; they report back the FindGlslang and private-header failures verbatim as input to PRs 3, 4, and 5. Outcome: no FindGlslang failure and no private-header failure; two small adaptation commits were enough (4c7d873623, Update for glslang 16.6.0; 548b87e64d, Update SPV comparison files)"
+    status: completed
 isProject: false
 ---
 
@@ -23,7 +23,11 @@ Scope: get a buildable 1.4.363.0 dependency tree with Slang installed, so the PR
 
 Division of labour: the agent writes the forked script and the `common-functions.sh` changes (Tasks 1 and 2). The agent cannot build in this environment, so the user runs the deps build and the heavydb configure/build (Task 4) and reports the diagnostics back.
 
-Status: Tasks 1 and 2 are implemented. Task 3 is deferred until slang has OSRB approval. Task 4 is outstanding and is the user's to run.
+Status: Tasks 1, 2 and 4 are done. Task 3 is split: the SDK summary is tracked in [pr-895-review-followups.md](pr-895-review-followups.md), and the Slang attribution remains deferred until Slang has OSRB approval.
+
+Slang history: Task 2 below says to add `slang` to the target list, but the commit that landed (`27c0a246a1`, Add Vulkan 1.4.363.0 build script fork, and adapt install_vulkan) left it out, so Slang was not built for the whole of PR 895's original review. It was restored afterwards by re-adding `slang` to the `./vulkansdk` line. Read Task 2 as the intent, not as what first landed.
+
+Commit hashes here are as of the rebase onto `master` that preceded the PR 895 review. They change on every rebase; find a commit by its subject, which is given alongside each hash.
 
 ## Verified: the existing fork's only functional modification is the WSI flags
 
@@ -80,9 +84,9 @@ For reference, other notable upstream deltas from 1.3.275 that come along for fr
 
 In `install_vulkan`:
 
-- Set `VULKAN_VERSION=1.4.363.0` and replace the pin comment (lines 1077-1078) with a note that the fork adds Slang and that glslang private headers are still copied pending PRs 3 and 4 of the migration plan.
-- Add `slang` to the target list: `./vulkansdk --maxjobs --skip-deps loader glslang spirvcross vul layers slang`
-- Keep all 15 glslang private-header copies for now. The spike needs the tree to build far enough to reach our own compiler errors, and `TShaderIRUtils` plus `IoMapResolver` still require them. Add `mkdir -p` for `${ARCH}/include/glslang/Include`, `${ARCH}/include/glslang/MachineIndependent`, and `${ARCH}/include/glslang/SPIRV` before the copies, because glslang 14+ tightened which headers it installs and the destination directories may no longer exist. The `build_info.h` and `SPIRV/disassemble.h` copies are now redundant (1.4.363 stopped deleting them) but harmless; leave them so the diff stays minimal.
+- Set `VULKAN_VERSION=1.4.363.0` and replace the pin comment above it with a note that the fork adds Slang and that glslang private headers are still copied pending PRs 3 and 4 of the migration plan. (As landed, the pin comment was simply removed.)
+- Add `slang` to the target list: `./vulkansdk --maxjobs --skip-deps loader glslang spirvcross vul layers slang`. (Not in the commit that landed; restored later, see the status note.)
+- Keep all the glslang private-header copies for now. (There were 16, counting `build_info.h`, which the 15 below leave out because it is copied from the build tree. The branch has since cut them to 14 in `acbd16b1f6`, Drop two glslang private-header dependencies, which removed `build_info.h` and `SPIRV/disassemble.h`, and to 13 in `c16ae41c47`, Resolve shader subroutines textually, delete TShaderIRUtils, which removed `InfoSink.h`.) The spike needs the tree to build far enough to reach our own compiler errors, and `TShaderIRUtils` plus `IoMapResolver` still require them. Add `mkdir -p` for `${ARCH}/include/glslang/Include`, `${ARCH}/include/glslang/MachineIndependent`, and `${ARCH}/include/glslang/SPIRV` before the copies, because glslang 14+ tightened which headers it installs and the destination directories may no longer exist. The `build_info.h` and `SPIRV/disassemble.h` copies are now redundant (1.4.363 stopped deleting them) but harmless; leave them so the diff stays minimal.
 
 Ninja is required by `build_slang`. `install_ninja` runs at `scripts/mapd-deps-ubuntu.sh:170` and `scripts/mapd-deps-rockylinux.sh:184`, both well before `install_vulkan` (line 243 in the Ubuntu script), so it will be present in `$PREFIX/bin`. Confirm `$PREFIX/bin` is on `PATH` at that point in the deps build.
 
@@ -99,9 +103,11 @@ Findings worth keeping for when this is picked up:
 - The bundle's own `LICENSE.txt` is a five-line disclaimer pointing back at that registry, not the component breakdown the existing 1.3.275.0 file contains, so it is not a substitute.
 - Slang needs its own entry regardless of the SDK summary: `grep -i slang` against the 1.4.350.0 summary matches only glslang, so LunarG does not attribute Slang at all.
 - Slang's license is Apache-2.0 WITH LLVM-exception, at `https://raw.githubusercontent.com/shader-slang/slang/vulkan-sdk-1.4.363/LICENSE` (byte-identical to `master` at the time of checking). The local naming convention is `<name>__<upstream filename>`, so `slang__LICENSE` with no extension.
-- The 1.3.275.0 summary and the `vulkansdk-1.3.275.0` fork are both retained, so reverting the spike is a one-line change to `VULKAN_VERSION`. Retire them together once the bump sticks.
+- ~~The 1.3.275.0 summary and the `vulkansdk-1.3.275.0` fork are both retained, so reverting the spike is a one-line change to `VULKAN_VERSION`.~~ No longer true: the fork was deleted in `7092b5cf79` (Remove old Vulkan SDK build script), so reverting now needs that commit reverted too. The 1.3.275.0 summary is still in `ThirdParty/licenses/` and goes when the 1.4.363.0 one arrives.
 
-## Task 4 - Run the spike (user-executed)
+## Task 4 - Run the spike (user-executed, done)
+
+Outcome: neither of the failures predicted below happened. `install_vulkan` completed, and `find_package(Glslang)` succeeded unchanged against glslang 16.6.0, which still installs `libMachineIndependent.a`, `libGenericCodeGen.a` and `libOSDependent.a` alongside `libglslang`. Two small adaptation commits were all it took: `4c7d873623` (Update for glslang 16.6.0) and `548b87e64d` (Update SPV comparison files). The rest of this section is the plan as written beforehand.
 
 The agent cannot build in this environment, so this task is a handoff. Tasks 1 through 3 produce the tree; the user runs the build and reports back.
 
