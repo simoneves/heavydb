@@ -3,7 +3,10 @@ name: All shaders through Slang
 overview: What it takes to compile every shader in the library with Slang, building on PR 6, which opted in fifteen production stages. The remaining 41 production stages are blocked by four things of different kinds - an unresolved design question about resources Slang drops as unused, GLSL features Slang's GLSL mode does not model at all (buffer device addresses, geometry and mesh I/O), a short list of mechanical source changes, and two Slang bugs - plus missing test coverage and a compile-time cost that matters once the Marks are involved. This is mostly PR 7 and PR 8 of remaining-slang-migration-work.md, sequenced so that the decision everything depends on comes first.
 todos:
   - id: unused-resources-decision
-    content: "Decide how to handle resources Slang drops as unused, since it decides how every templated shader can opt in. Spike first: does Slang's own reflection/layout API report unused parameters and the bindings it gave them? Then choose between runtime tolerance, reflection from Slang's layout, or making every declared resource reachable"
+    content: "Decided 2026-11-01: take reflection from Slang's program layout. The spike confirmed it works: on accumulatorScale_2ndPass's failing variant the layout reports the unused block with a binding of its own (0), and the used resources' layout bindings agree with the SPIR-V's"
+    status: completed
+  - id: reflection-from-layout
+    content: "Build ShaderReflection from Slang's program layout for Slang-compiled materials, instead of from the SPIR-V. Open design point: the layout covers the whole material, ShaderReflection is per stage, so each stage's declared parameters have to be attributed to it (likely from its own translation unit) while bindings come from the combined program. Reproduce the redecorator's conventions: names, struct flattening, array dimensions, push constant spans, the type whitelist, the clash check"
     status: pending
   - id: mechanical-changes
     content: "Glslang-neutral source changes: block-level interface locations in GlslStructBuilder (all 17 Mark stages), padding instead of layout(offset) in PolyMark's split push constant block, and a memory-model review of the two coherent image atomics. Each landed with glslang's SPIR-V shown unchanged or equivalent"
@@ -57,7 +60,25 @@ The remaining 41, by family:
 
 Plus 89 test stages, which do not ship and can stay on glslang until glslang goes. Some hit the same blockers, plus `pixel_interlock` and a user identifier named `imageSize`.
 
-## 1. Decide what to do about unused resources (first)
+## 1. Unused resources: reflection from Slang's layout (decided)
+
+**Decision (2026-11-01): take reflection from Slang's program layout for Slang-compiled materials.**
+
+**Spike result.** On the `pct_accum_test_0` variant of `accumulatorScale_2ndPass.frag`, compiled with `fullScreenTriangle.vert` as one program through a compile request:
+
+| | `ACCUMULATOR_SCALE_2ND_PASS_UBO` (unused) | `inTxArrayPixelCounter` | `THRESHOLD_SCALE_UBO` |
+|---|---|---|---|
+| Slang program layout | 0 | 1 | 2 |
+| Slang SPIR-V | absent | 1 | 2 |
+| glslang reflection | 2 | 0 | 1 |
+
+So Slang did not renumber anything because the block was unused: it reserved binding 0 for it and left it out of the SPIR-V. What broke the accumulation tests was that reflection read from the SPIR-V had no block at all, so the material had nothing to bind it to. Reflection from the layout includes it, and binding a descriptor the shader never reads is harmless. The numbers differ from glslang's, which does not matter, since the runtime binds whatever the reflection says.
+
+**Design point to settle when building it.** The program layout lists the parameters of the whole material; `ShaderReflection` is per stage. Each stage's declared parameters have to be attributed to it, most likely by reflecting each translation unit on its own for the names it declares and taking the binding numbers from the combined program. Everything `ShaderRedecorator` encodes has to be reproduced from the layout's type information instead: names (no `SLANG_ParameterGroup_` normalisation needed, since the layout reports declared names), dotted UBO member names and bare SSBO ones, array dimensions and their flattening, push constant spans and dual naming, the type whitelist, fragment output locations, and the clash check. This is the reflection half of PR 7, brought forward.
+
+The rest of this section is the analysis that led to the decision.
+
+### Background
 
 Slang drops any resource the entry point never reads; glslang keeps every declared one, because `IoMapResolver` forces liveness. `PreserveParameters` does not change Slang's behaviour for GLSL input. Where a variant leaves a declared block unread, Slang's reflection lacks it and the bindings differ from glslang's. That is what kept `accumulatorScale_2ndPass.frag` out: 19 accumulation tests rendered wrong in the variants that do not read `ACCUMULATOR_SCALE_2ND_PASS_UBO_TYPE`. The Marks and Scales are assembled from templates and subroutine bindings in the same way, so the same problem should be expected across them.
 
