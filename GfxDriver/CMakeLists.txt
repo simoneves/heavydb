@@ -128,9 +128,9 @@ list(APPEND GFXDRIVER_LIBS ${SpirvCross_LIBRARIES})
 
 if(ENABLE_SLANG)
   find_package(Slang REQUIRED)
+  list(APPEND GFXDRIVER_SOURCES ShaderCompiler/SlangBackend.cpp)
   list(APPEND GFXDRIVER_INCLUDE_DIRS ${Slang_INCLUDE_DIR})
   list(APPEND GFXDRIVER_LIBS ${Slang_LIBRARIES})
-  list(APPEND GFXDRIVER_DEFS "-DHAVE_SLANG")
 endif()
 
 find_package(absl REQUIRED)
@@ -247,6 +247,10 @@ add_library(GfxDriver ${GFXDRIVER_SOURCES})
 target_include_directories(GfxDriver PRIVATE ${GFXDRIVER_INCLUDE_DIRS})
 target_link_libraries(GfxDriver ${GFXDRIVER_LIBS})
 target_compile_definitions(GfxDriver PRIVATE ${GFXDRIVER_DEFS})
+if(ENABLE_SLANG)
+  # Public, since it decides whether SlangBackend.h declares anything
+  target_compile_definitions(GfxDriver PUBLIC HAVE_SLANG)
+endif()
 
 # expose the definitions to the parent
 set(GFXDRIVER_INCLUDE_DIRS ${GFXDRIVER_INCLUDE_DIRS} PARENT_SCOPE)

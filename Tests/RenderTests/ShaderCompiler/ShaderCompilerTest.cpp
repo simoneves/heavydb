@@ -21,6 +21,7 @@
 #include "GfxDriver/ShaderCompiler/ResourceLimits.h"
 #include "GfxDriver/ShaderCompiler/ShaderManager.h"
 #include "GfxDriver/ShaderCompiler/ShaderReflection.h"
+#include "GfxDriver/ShaderCompiler/SlangBackend.h"
 #include "GfxDriver/ShaderCompiler/Types.h"
 #include "Logger/Logger.h"
 #include "Tests/TestHelpers.h"
@@ -830,6 +831,101 @@ TEST_F(GeneralShaderCompilerTest, SubroutinePrototypeTest) {
         << glsl;
   }
 }
+
+#ifdef HAVE_SLANG
+
+std::string disassemble(const spirv_t& spirv) {
+  spvtools::SpirvTools tools(spirv_target_env_for(spirv));
+  std::string text;
+  tools.Disassemble(spirv, &text, SPV_BINARY_TO_TEXT_OPTION_NONE);
+  return text;
+}
+
+TEST_F(GeneralShaderCompilerTest, SlangBackendCompileTest) {
+  SlangBackend backend(this->shaderMgr->getLibrary());
+  using StageSource = ShaderCompilerBackend::StageSource;
+
+  // A real template, assembled by the glslang path so that Slang sees exactly what
+  // glslang does
+  {
+    auto cache = this->shaderMgr->createCache(
+        this->shaderMgr->createBuilder("Rendering/clearQueryOutputBuffer.comp"));
+    ASSERT_NE(cache, nullptr);
+    auto const results =
+        backend.compileMaterial({StageSource{"clearQueryOutputBuffer.comp",
+                                             std::string(cache->getGlsl()),
+                                             "main",
+                                             ShaderStage::kCompute}});
+    ASSERT_EQ(results.stages.size(), size_t(1));
+    ASSERT_FALSE(results.stages[0].first.empty()) << results.material_error;
+    auto const [valid, messages] = validate_spirv(results.stages[0].first);
+    EXPECT_TRUE(valid) << messages;
+  }
+
+  // An include has to be served from the Library, since the assembled source names
+  // its includes rather than containing them
+  {
+    std::string const source = R"glsl(#version 460
+#include "Utils/colorConvertSubroutines.glsl"
+layout(local_size_x = 1) in;
+layout(std430, binding = 0) buffer OUT_SSBO {
+  vec4 color;
+};
+void main() {
+  color = transformHSLtoRGB(vec4(0.5, 0.5, 0.5, 1.0));
+}
+)glsl";
+    auto const results = backend.compileMaterial(
+        {StageSource{"includeTest.comp", source, "main", ShaderStage::kCompute}});
+    ASSERT_FALSE(results.stages[0].first.empty()) << results.material_error;
+    auto const [valid, messages] = validate_spirv(results.stages[0].first);
+    EXPECT_TRUE(valid) << messages;
+  }
+
+  // The pipelines are created with the entry point name the material gives, so the
+  // SPIR-V must keep it rather than renaming it to main
+  {
+    std::string const source = R"glsl(#version 460
+layout(location = 0) out vec4 color;
+void customEntry() {
+  color = vec4(1.0);
+}
+)glsl";
+    auto const results = backend.compileMaterial(
+        {StageSource{"entryTest.frag", source, "customEntry", ShaderStage::kFragment}});
+    ASSERT_FALSE(results.stages[0].first.empty()) << results.material_error;
+    auto const text = disassemble(results.stages[0].first);
+    EXPECT_NE(text.find("OpEntryPoint Fragment %"), std::string::npos) << text;
+    EXPECT_NE(text.find("\"customEntry\""), std::string::npos) << text;
+  }
+
+  // A failure names the stage it belongs to and fails the material, as with glslang
+  {
+    std::string const good = R"glsl(#version 460
+layout(location = 0) out vec4 color;
+void main() {
+  color = vec4(1.0);
+}
+)glsl";
+    std::string const bad = R"glsl(#version 460
+layout(location = 0) out vec4 color;
+void main() {
+  color = undefinedFunction();
+}
+)glsl";
+    auto const results = backend.compileMaterial(
+        {StageSource{"goodStage.frag", good, "main", ShaderStage::kFragment},
+         StageSource{"badStage.frag", bad, "main", ShaderStage::kFragment}});
+    ASSERT_EQ(results.stages.size(), size_t(2));
+    EXPECT_TRUE(results.stages[1].first.empty());
+    EXPECT_NE(results.stages[1].second.find("badStage.frag"), std::string::npos)
+        << results.stages[1].second;
+    EXPECT_NE(results.material_error.find("badStage.frag"), std::string::npos)
+        << results.material_error;
+  }
+}
+
+#endif  // HAVE_SLANG
 
 }  // namespace ShaderCompilerTests
 
