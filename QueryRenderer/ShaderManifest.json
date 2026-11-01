@@ -257,7 +257,8 @@
       "file_path": "./Rendering/shaders",
       "internal_path": "Rendering/",
       "language": "glsl",
-      "class": "compute"
+      "class": "compute",
+      "slang": true
     },
     {
       "filename": "multiGpuCompositeIDs.comp",
@@ -271,14 +272,16 @@
       "file_path": "./Rendering/shaders",
       "internal_path": "Rendering/",
       "language": "glsl",
-      "class": "compute"
+      "class": "compute",
+      "slang": true
     },
     {
       "filename": "accumulatorTx_findStdDev.comp",
       "file_path": "./Rendering/shaders",
       "internal_path": "Rendering/",
       "language": "glsl",
-      "class": "compute"
+      "class": "compute",
+      "slang": true
     },
     {
       "filename": "accumulatorIDPass.frag",
@@ -313,7 +316,8 @@
       "file_path": "./Rendering/shaders",
       "internal_path": "Rendering/",
       "language": "glsl",
-      "class": "compute"
+      "class": "compute",
+      "slang": true
     },
     {
       "filename": "ppllPolyTemplate_count.vert",

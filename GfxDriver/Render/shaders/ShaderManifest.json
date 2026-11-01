@@ -89,35 +89,40 @@
       "file_path": "./PPLL/",
       "internal_path": "PPLL/",
       "language": "glsl",
-      "class": "compute"
+      "class": "compute",
+      "slang": true
     },
     {
       "filename": "ppllStats.comp",
       "file_path": "./PPLL/",
       "internal_path": "PPLL/",
       "language": "glsl",
-      "class": "compute"
+      "class": "compute",
+      "slang": true
     },
     {
       "filename": "ppllStatsTiled.comp",
       "file_path": "./PPLL/",
       "internal_path": "PPLL/",
       "language": "glsl",
-      "class": "compute"
+      "class": "compute",
+      "slang": true
     },
     {
       "filename": "ppllStatsTiledBatches_Stage1.comp",
       "file_path": "./PPLL/",
       "internal_path": "PPLL/",
       "language": "glsl",
-      "class": "compute"
+      "class": "compute",
+      "slang": true
     },
     {
       "filename": "ppllStatsTiledBatches_Stage2.comp",
       "file_path": "./PPLL/",
       "internal_path": "PPLL/",
       "language": "glsl",
-      "class": "compute"
+      "class": "compute",
+      "slang": true
     },
     {
       "filename": "ppllCountFragments.frag",
