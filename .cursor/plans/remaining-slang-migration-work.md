@@ -9,8 +9,8 @@ todos:
     content: Slang OSRB approval and attribution. External gate on merging PR 6 onward; start now, independent of all code work
     status: pending
   - id: spike-slang-glsl
-    content: "PR 0b: Compile the shader corpus through slangc -allow-glsl and classify failures, reporting Tests/ and non-Tests/ counts separately. Prefer assembled final_glsl over raw sources. No dependencies; gates the scope of PRs 6, 7 and 8. First pass done 2026-11-01, results under PR 0b below: 18 of 56 production stages verified clean, 13 need Slang-native rewrites, 10 need mechanical fixes, 15 could not be judged because the render suite never assembles them. Closing that coverage gap is what remains"
-    status: in_progress
+    content: "PR 0b: Compile the shader corpus through slangc -allow-glsl and classify failures, reporting Tests/ and non-Tests/ counts separately. Prefer assembled final_glsl over raw sources. No dependencies; gates the scope of PRs 6, 7 and 8. First pass done 2026-11-01, results under PR 0b below: 18 of 56 production stages verified clean, 13 need Slang-native rewrites, 10 need mechanical fixes, 15 could not be judged because the render suite never assembles them. Second pass the same day ran be-render-tests against the server with shader capture and compared reflection with glslang: no layout differences once -matrix-layout-row-major is used, but two silent miscompiles (texelFetch on sampler2DMS drops the sample index; unsuffixed double literals narrowed to float). Remaining items are optional"
+    status: completed
   - id: remove-tshaderirutils
     content: "PR 3: Delete TShaderIRUtils and reimplement subroutine binding as a textual pass, resolving targets through the Library because the assembled source holds #include directives rather than their text. Landed as c16ae41c47, no golden changed. Retired one copied header rather than the three estimated"
     status: completed
@@ -172,9 +172,28 @@ Mechanical, each workaround verified to compile:
 
 **What this means for scoping.** The production shaders split cleanly by family. Compute, post-processing, PPLL and shading are near-clean under `-allow-glsl` and can ride PR 6 with a handful of mechanical edits. The Marks cannot: BDA and geometry/mesh I/O put most Mark vertex templates and every Mark geometry and mesh template into the PR 8 bucket from the start, and the Marks are the core of the renderer. PR 6's flag therefore cannot be all-or-nothing; it has to select per family, or the Marks have to be rewritten before Slang can be the default.
 
-**What is left of PR 0b:**
-- Close the coverage gap: get the 15 unjudged production stages, chiefly the Scales and mesh2d, assembled. Either exercise them from a test (`QueryRendererTest` currently reaches few templates) or capture artifacts from a server render session that uses them.
-- Optionally, a parity check for the 68 clean files: compare the reflection of Slang's SPIR-V with glslang's, since compiling clean says nothing about bindings, locations or layout matching.
+### Second pass: be-render-tests and reflection parity (2026-11-01)
+
+The server ran in the build container with `OMNISCI_shader_artifact_path` set and `OMNISCI_always_save_shader_artifacts=all`, against the existing render-test data store (`/home/seves/render-tests`), and the `be-render-tests` suite ran from the host (`test.sh`, Node 24.11.0): 441 passing, 7 pending, 2 failing. The two failures are `subquery_hittest_tests_7` and `_8`, which the suite's local `DO NOT LAND YET` commit re-enables ahead of the optimization branch, so they are not shader-related. [pr0b-slangc-parity.py](pr0b-slangc-parity.py) then compiled every captured stage, using the `.builder` for its entry point, and compared `spirv-cross --reflect` of glslang's SPIR-V with Slang's after normalising Slang's names (`SLANG_ParameterGroup_<block>_std430`, `entryPointParam_<entry>.<output>`).
+
+**Correct flag: `-matrix-layout-row-major`, not column-major.** Slang names matrix layouts the other way round from GLSL. With `-matrix-layout-column-major`, every `mat3x2` and `dmat3x2` in a block got a 16 or 32 byte column stride instead of 8 or 16, shifting every later member. With `-matrix-layout-row-major` the layouts match glslang exactly. The first pass's compile results do not depend on this.
+
+**Coverage.** 39 distinct stages captured; the suite reached `mesh2dTemplate.*`, `ppllCountFragments.frag`, `ppllPolyTemplate_capture.vert` and `ppllPolyTemplate_count.vert`, and all six Scales are spliced into Mark shaders rather than being stages of their own. Artifacts are named by template basename, so each compile of a template overwrites the last and only one variant per template survives. That is why ordinal, quantize and percentage scales, which the suite uses heavily, appear in no captured file. Getting every variant needs the artifact name to be made unique per compile. Still unreached by anything: `windBarbTemplate.*` (the suite has no windbarb test), `multiGpuCompositeIDs.comp` (needs more than one GPU), `accumulationCompositePeer.frag`, `shadingMain.vert` and `tableFunctionTest.*`.
+
+**Compile results.** 20 of the 39 compile. The 19 failures are all Mark stages and both `geoCount` passes, and every one fails for a root cause the first pass predicted, with one addition: `gl_DrawIDARB` (`ARB_shader_draw_parameters`) is unknown to Slang, which needs the core `gl_DrawID`. Renaming it makes `ppllPolyTemplate_capture.vert` compile.
+
+**Reflection parity, for the 20 that compile.** 9 match glslang exactly. The other 11 differ in three ways, none of them a layout difference:
+- Auto-assigned bindings are renumbered (5 stages: the three SMAA passes, `mesh2dTemplate.frag`, `ppllCountFragments.frag`). glslang numbers them across a material's stages with one shared resolver; Slang, given one stage, starts again at 0. Every explicit binding matched. Expected to go away when Slang compiles the composed program, which is PR 7's plan.
+- An array member of a block becomes a struct holding a `data` array (5 stages). Offsets, strides and sizes are identical; only the names change, to `tiles.data.x` instead of `tiles.x`. `ShaderReflection`'s flattening has to unwrap this in PR 7, or every name `Material` and the Vega writers look up stops resolving.
+- Unused resources are dropped (3 stages). glslang keeps every declared resource; Slang keeps only what the entry point reaches, and `-preserve-params` does not change that. For `SMAAEdgeDetection.frag` (`fTexCoord`) and `mesh2dTemplate.vert` (`SHARED_VIEWPORT_UBO`) the resource really is unused. Anything that binds or pushes by name to such a resource would now fail to find it.
+
+**Two silent miscompiles, found by reading the output.** Neither is reported as an error:
+- **`texelFetch` on a `sampler2DMS` drops the sample index.** `SeparateMultiSample.frag`'s `texelFetch(colorTex, coord, int(pushConstants.sampleIndex))` comes out as `texelFetch(colorTex, coord, 0)`, so the push constant disappears from the module too. That is a Slang bug in its GLSL front end, and it would make every multisample separation pass read sample 0.
+- **Unsuffixed double literals are narrowed to float.** `SEPARATOR_DOUBLE` in `coordConvertSubroutines.glsl` and the Mercator polynomial that `QueryRenderer/Projections/Projection.cpp` emits into shaders write `double` constants without `LF`. glslang keeps them at full precision; Slang treats them as `float`, warning `E40009` or `E40010`, so `SEPARATOR_DOUBLE` becomes -infinity and the small polynomial coefficients in `ppllPolyTemplate_capture.vert` become zero. Adding `LF` is mechanical and harmless under glslang, so it can land now.
+
+**What this changes.** The not-modelled and mechanical lists from the first pass stand, plus `gl_DrawIDARB` and the double literals in the mechanical one. Compile success is not enough: PR 6 has to diff the SPIR-V or the rendered output for every family it moves, because the multisample bug compiles clean and the literal narrowing only warns. The `texelFetch` bug should be reported upstream, with `SeparateMultiSample.frag` as the reproducer.
+
+**What is left of PR 0b:** making artifact names unique per compile and rerunning, to see every scale variant; and a windbarb spec, since nothing renders one. Both are optional now: neither can change which families compile, because every unreached stage is a Mark template that already fails on BDA or geometry I/O, or is a variant of one that compiles.
 
 ## What PR 3 established, which the rest inherits
 
