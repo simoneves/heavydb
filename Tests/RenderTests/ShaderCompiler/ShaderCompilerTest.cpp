@@ -437,8 +437,8 @@ TEST_F(GeneralShaderCompilerTest, ShaderRedecoratorTest) {
   // unnoticed.
   //
 
-  // Everything lands in set 0. No shader declares an explicit set, and
-  // redecorateInternal is only ever called with set 0.
+  // Everything lands in set 0. No shader declares an explicit set, and glslang's
+  // resolver assigns 0 in the absence of one.
   for (auto const* refl : {&vert_refl, &frag_refl}) {
     for (auto const& name : refl->getAllSamplerNames()) {
       EXPECT_EQ(refl->getSamplerSet(name), 0) << name;
@@ -544,8 +544,8 @@ TEST_F(GeneralShaderCompilerTest, ShaderRedecoratorTest) {
 
   // An explicit `binding = N` in the source means "this resource is shared
   // across the stages of this material, keep this number so the stages agree".
-  // That agreement is the whole reason the sentinel scheme exists, so assert it
-  // directly rather than leaving it implied by two hand-maintained tables.
+  // That agreement is what lets the stages share one descriptor set layout, so
+  // assert it directly rather than leaving it implied by two hand-maintained tables.
   EXPECT_EQ(vert_refl.getUniformBufferBinding("SHARED_UBO"),
             frag_refl.getUniformBufferBinding("SHARED_UBO"));
   EXPECT_EQ(vert_refl.getShaderStorageBufferBinding("SHARED_SSBO"),
@@ -598,8 +598,8 @@ TEST_F(GeneralShaderCompilerTest, ShaderRedecoratorTest) {
   EXPECT_TRUE(frag_refl.hasShaderStorageBufferAttr("frag_ssbo_values"));
   EXPECT_TRUE(frag_refl.hasShaderStorageBufferAttr("frag_shared_ssbo_values"));
 
-  // Vertex attributes are reassigned unconditionally from 0, and only the
-  // vertex stage records them
+  // in_position declares no location, so glslang's resolver gives it the first free
+  // one. Only the vertex stage records vertex attributes.
   EXPECT_TRUE(vert_refl.hasVertexAttr("in_position"));
   EXPECT_EQ(vert_refl.getVertexAttrLocation("in_position"), 0);
   EXPECT_EQ(vert_refl.getVertexAttrArraySize("in_position"), 1);
@@ -621,8 +621,9 @@ TEST_F(GeneralShaderCompilerTest, ShaderRedecoratorClashTest) {
     FAIL() << "Expected the clashing bindings to throw";
   } catch (const std::runtime_error& e) {
     // The content of the message matters as much as the throw: it is what tells
-    // a shader author which two resources collided. This allocator is expected to be
-    // replaced, and the diagnostic has to survive that, so pin it here.
+    // a shader author which two resources collided. The check is expected to move
+    // when glslang is replaced by Slang, and the diagnostic has to survive that, so
+    // pin it here.
     std::string const message(e.what());
     EXPECT_NE(message.find("Binding clash"), std::string::npos) << message;
     EXPECT_NE(message.find("SHARED_SSBO"), std::string::npos) << message;
