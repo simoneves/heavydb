@@ -62,7 +62,11 @@ layout(std430) buffer PPLL_STATS_SSBO {
 };
 
 // fragment counts image
-layout(r32ui) uniform restrict coherent uimage2D fragment_count_image;
+// Not coherent: each invocation reads and writes only its own pixel, P plus the tile's
+// offset, so nothing another invocation writes in this dispatch is ever read, and
+// dispatches are ordered by pipeline barriers. Slang rejects any image function on an
+// image declared coherent.
+layout(r32ui) uniform restrict uimage2D fragment_count_image;
 
 // fragment list SSBO
 coherent layout (std430) buffer PPLL_RECORDS_SSBO {
