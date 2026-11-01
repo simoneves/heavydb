@@ -709,6 +709,52 @@ TEST_F(GeneralShaderCompilerTest, LinkFailureInLaterStageTest) {
   }
 }
 
+TEST_F(GeneralShaderCompilerTest, PushConstantSharedNameTest) {
+  // Two stages whose push constant blocks share an instance name, pushConstants, over
+  // different spans: bytes 0 to 4 in the vertex shader and 4 to 8 in the fragment
+  // shader. A push by that name is valid if either stage covers it, so the check must
+  // not settle on whichever stage happens to come first.
+  ShaderCacheShPtrVector caches;
+  ASSERT_NO_THROW(caches = this->shaderMgr->createCacheVectorFromTemplate(
+                      {{"ShaderCompilerTests/pushConstantSharedNameTest.vert"},
+                       {"ShaderCompilerTests/pushConstantSharedNameTest.frag"}}));
+  ASSERT_EQ(caches.size(), size_t(2));
+
+  std::vector<const ShaderReflection*> reflections;
+  for (auto const& cache : caches) {
+    reflections.push_back(&cache->getReflection());
+  }
+  auto const validate = [&reflections](
+                            std::string_view name, uint32_t offset, uint32_t num_bytes) {
+    validate_push_constant_range(reflections, name, offset, num_bytes, "test material");
+  };
+
+  // Either span, by the shared instance name. The second is the case that used to be
+  // rejected, the vertex stage being found first and its span tried alone.
+  EXPECT_NO_THROW(validate("pushConstants", 0, 4));
+  EXPECT_NO_THROW(validate("pushConstants", 4, 4));
+
+  // The type names and member names are unique, so each resolves to one stage
+  EXPECT_NO_THROW(validate("VERT_SHARED_NAME_PUSH_CONSTANTS", 0, 4));
+  EXPECT_NO_THROW(validate("FRAG_SHARED_NAME_PUSH_CONSTANTS", 4, 4));
+  EXPECT_NO_THROW(validate("frag_value", 4, 4));
+  EXPECT_THROW(validate("frag_value", 0, 4), std::runtime_error);
+
+  // Straddling the two spans is covered by neither, even though between them they hold
+  // every byte of it. The message has to list both, since naming only one would suggest
+  // the other does not exist.
+  try {
+    validate("pushConstants", 2, 4);
+    FAIL() << "Expected a push straddling both spans to throw";
+  } catch (const std::runtime_error& e) {
+    std::string const message(e.what());
+    EXPECT_NE(message.find("4 bytes at offset 0"), std::string::npos) << message;
+    EXPECT_NE(message.find("4 bytes at offset 4"), std::string::npos) << message;
+  }
+
+  EXPECT_THROW(validate("no_such_push_constant", 0, 4), std::runtime_error);
+}
+
 }  // namespace ShaderCompilerTests
 
 int main(int argc, char* argv[]) {

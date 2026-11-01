@@ -127,8 +127,8 @@ void Material::createLocalUniformBuffers() {
       auto binding = reflection.getUniformBufferBinding(uniform_buffer_name);
       auto block_size = reflection.getUniformBufferBlockSize(uniform_buffer_name);
       CHECK(binding >= 0 && block_size > 0)
-          << "Failed to create local UBOs for '" << resource_tracking_string_ << "': "
-          << "Invalid binding/size for UBO '" << uniform_buffer_name << "'";
+          << "Failed to create local UBOs for '" << resource_tracking_string_
+          << "': " << "Invalid binding/size for UBO '" << uniform_buffer_name << "'";
 
       // if we already have this binding and name, we don't need to create another one
       auto const [itr, create] =
@@ -238,28 +238,16 @@ uint32_t Material::getVertexAttributeLocation(std::string_view attr_name) const 
 void Material::validatePushConstantRange(std::string_view name,
                                          uint32_t offset,
                                          uint32_t num_bytes) const {
+  std::vector<const ShaderReflection*> reflections;
+  reflections.reserve(shader_caches_.size());
   for (auto const& cache : shader_caches_) {
-    auto const& info = cache->getReflection().getPushConstantItemInfo(name);
-    if (info.offset < 0) {
-      continue;
-    }
-
-    auto const declared_begin = static_cast<uint32_t>(info.offset);
-    auto const declared_end =
-        declared_begin + static_cast<uint32_t>(info.block_or_array_size);
-    RUNTIME_EX_ASSERT(
-        offset >= declared_begin && offset + num_bytes <= declared_end,
-        "Push of " + std::to_string(num_bytes) + " bytes at offset " +
-            std::to_string(offset) + " to '" + std::string(name) + "' in Material '" +
-            resource_tracking_string_ + "' falls outside the " +
-            std::to_string(declared_end - declared_begin) +
-            " bytes the shader declares at offset " + std::to_string(declared_begin));
-    return;
+    reflections.push_back(&cache->getReflection());
   }
-
-  THROW_RUNTIME_EX("Failed to find push constant '" + std::string(name) +
-                   "' in Material '" + resource_tracking_string_ +
-                   "'. The name must be the push constant block or one of its members");
+  validate_push_constant_range(reflections,
+                               name,
+                               offset,
+                               num_bytes,
+                               "Material '" + resource_tracking_string_ + "'");
 }
 
 const ShaderReflection::ItemInfo& Material::getUniformBufferAttrInfo(

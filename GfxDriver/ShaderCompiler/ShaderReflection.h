@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <iosfwd>
 #include <set>
 #include <string>
@@ -191,5 +192,19 @@ class ShaderReflection {
   NameToItemInfoMap push_constant_attrs_;
   std::set<int> fragment_shader_output_locations_;
 };
+
+// Throws unless at least one of `reflections`, typically the stages of one material,
+// declares `name` as its push constant block or one of that block's members and covers
+// the whole of [offset, offset + num_bytes) with it. `owner` names what the reflections
+// belong to, for the error message.
+//
+// Any one stage covering the range is enough. Names are not unique across stages: two
+// stages may each give their own block the same instance name over different spans, as
+// PolyMark's capture shaders do, and a push into either span is legitimate.
+void validate_push_constant_range(const std::vector<const ShaderReflection*>& reflections,
+                                  std::string_view name,
+                                  uint32_t offset,
+                                  uint32_t num_bytes,
+                                  std::string_view owner);
 
 }  // namespace gfx
