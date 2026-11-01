@@ -189,6 +189,10 @@ ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
   target.profile = impl_->spirv_profile;
   target.forceGLSLScalarBufferLayout = true;
 
+  //
+  // Slang drops any global resource the entry point does not use, where glslang keeps
+  // every one declared. PreserveParameters does not change that for GLSL input, set
+  // either on the session or on the target. See SlangUnusedResourcesTest.
   std::array<slang::CompilerOptionEntry, 2> options{};
   options[0].name = slang::CompilerOptionName::EmitSpirvDirectly;
   options[0].value.intValue0 = 1;

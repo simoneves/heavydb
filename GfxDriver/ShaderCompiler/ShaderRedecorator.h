@@ -48,6 +48,10 @@ class ShaderRedecorator {
   // when the descriptor set layout is built.
   static constexpr uint32_t kMaxBindingsPerSet = 0xFFFFU;
 
+  // The tool id Slang writes into the generator word of a SPIR-V header, from the
+  // Khronos registry of SPIR-V generators. glslang's is 8.
+  static constexpr uint32_t kSlangSpirvGeneratorId = 40U;
+
   using ReservedBindingEntry = std::tuple<ResourceType, std::string>;
   using ReservedBindings = std::map<uint32_t, ReservedBindingEntry>;
 
