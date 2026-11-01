@@ -896,6 +896,9 @@ if(ENABLE_RENDERING)
   option(ENABLE_SHADER_DEBUG_PRINTF "Enable Vulkan Shader Debug printf extension" OFF)
 
   option(HOTLOAD_SHADER_TEMPLATE_FILES "Enable dynamic reloading of glsl shader templates" OFF)
+  # Off until Slang has OSRB approval. Builds the Slang shader compiler backend
+  # alongside glslang; glslang stays the default either way.
+  option(ENABLE_SLANG "Build the Slang shader compiler backend" OFF)
 
   add_definitions("-DHAVE_RENDERING")
   add_subdirectory(GfxDriver)
