@@ -45,8 +45,10 @@ class GlslStructBuilder {
 
   // Create a string that can serve as a block definition in GLSL
   // Always includes qualifiers
-  // do_auto_locations will add the `layout (location=N)` declaration to each member
-  // and is useful for shader interface blocks (e.g. vertex to fragment)
+  // do_auto_locations numbers the members' locations from 0, for shader interface
+  // blocks (e.g. vertex to fragment). Where every member takes one location and none is
+  // reserved, that is a single `layout (location = 0)` on the block, which Slang accepts
+  // and a location per member is not; otherwise each member gets `layout (location=N)`.
   // reserved_locations will be skipped when do_auto_locations is enabled
   using locations_ref_type = std::reference_wrapper<const std::set<int>>;
   std::string createInterfaceBlockString(

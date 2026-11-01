@@ -665,7 +665,7 @@ void SymbolMark::updateShader() {
           "fStrokeWidth", gfx::BufferAttrType::kFloat, quals);
 
       auto circle_fragment_inputs_str =
-          circle_fragment_inputs.createInterfaceBlockString("CircleStrokeFragmentInputs");
+          circle_fragment_inputs.createInterfaceBlockString(true);
       circle_stroke_vert_builder->replaceFirstTag("FragmentShaderInputs",
                                                   circle_fragment_inputs_str);
       circle_stroke_frag_builder->replaceFirstTag("FragmentShaderInputs",
