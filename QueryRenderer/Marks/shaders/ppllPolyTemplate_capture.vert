@@ -43,7 +43,7 @@ double projecty(in double y) {
 
 layout(location = 0) flat out uint32_t fPolygonID;
 
-layout(binding = 5, std430) buffer POLY_CAPTURE_POLYGON_ID_SSBO {
+layout(binding = 5, std430) readonly buffer POLY_CAPTURE_POLYGON_ID_SSBO {
   uint32_t polygonIDs[];
 };
 
