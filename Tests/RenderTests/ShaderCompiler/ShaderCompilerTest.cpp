@@ -1321,6 +1321,47 @@ TEST_F(GeneralShaderCompilerTest, SlangSelectionTest) {
   EXPECT_EQ(generator_of(build({vert})[0]), kGlslangGenerator);
 }
 
+TEST_F(GeneralShaderCompilerTest, SlangUnreachedMaterialsTest) {
+  // Opted-in production materials that be-render-tests cannot reach, built through the
+  // real pipeline with each compiler preferred in turn: each must go through Slang
+  // when asked, and reflect and run exactly as it does through glslang.
+  constexpr uint32_t kSlangGenerator = 40;
+  // clang-format off
+  std::vector<std::vector<std::string>> const materials({
+      // Needs a second GPU
+      {"Rendering/fullScreenTriangle.vert", "Rendering/accumulationCompositePeer.frag"},
+  });
+  // clang-format on
+  auto const build = [this](const std::vector<std::string>& names,
+                            ShaderCompilerBackendType backend) {
+    this->shaderMgr->setPreferredCompilerBackend(backend);
+    std::vector<ShaderManager::Builder::ConstructionArgs> params;
+    for (auto const& name : names) {
+      params.push_back({name});
+    }
+    return this->shaderMgr->createCacheVectorFromTemplate(params);
+  };
+  for (auto const& names : materials) {
+    auto const by_glslang = build(names, ShaderCompilerBackendType::kGlslang);
+    auto const by_slang = build(names, ShaderCompilerBackendType::kSlang);
+    ASSERT_EQ(by_glslang.size(), names.size());
+    ASSERT_EQ(by_slang.size(), names.size());
+    for (size_t i = 0; i < names.size(); ++i) {
+      auto const& spirv = by_slang[i]->getSpirv();
+      ASSERT_GT(spirv.size(), size_t(2)) << names[i];
+      EXPECT_EQ(spirv[2] >> 16, kSlangGenerator) << names[i];
+      auto const [spirv_valid, validation_messages] = validate_spirv(spirv);
+      EXPECT_TRUE(spirv_valid) << names[i] << ":\n" << validation_messages;
+      EXPECT_EQ(
+          reflection_to_string(by_glslang[i]->getReflection()) +
+              execution_modes(by_glslang[i]->getSpirv()),
+          reflection_to_string(by_slang[i]->getReflection()) + execution_modes(spirv))
+          << names[i];
+    }
+  }
+  this->shaderMgr->setPreferredCompilerBackend(ShaderCompilerBackendType::kGlslang);
+}
+
 TEST_F(GeneralShaderCompilerTest, SlangEnvironmentSelectionTest) {
   // The preference starts from the environment, read when a ShaderManager is created
   auto const preferred_with = [](const char* value) {
