@@ -106,6 +106,65 @@ void validate_buffer_attr_type(TypeReflection* type, const std::string& name) {
 
 enum class BufferKind { kUniform, kStorage };
 
+// Copies a block's size and members from the stage's SPIR-V reflection, if the SPIR-V
+// has the block, and says whether it did. Slang's SPIR-V lays out a GLSL buffer block
+// by its declared rules, std430 or std140, but its reflection API lays out the same
+// block's element type with scalar alignment, which is wrong wherever the two differ:
+// a vec4 after a float, or the stride of an array of a struct ending in padding. A block
+// is in the SPIR-V whenever the entry point uses it, and then in full; only a block the
+// entry point never touches is left to the layout's computation.
+bool copy_buffer_from_spirv(BufferKind kind,
+                            const std::string& block_label,
+                            int binding,
+                            const ShaderReflection& from_spirv,
+                            ShaderReflection& reflection) {
+  if (kind == BufferKind::kStorage) {
+    if (!from_spirv.hasShaderStorageBuffer(block_label) ||
+        from_spirv.getShaderStorageBufferBinding(block_label) != binding) {
+      return false;
+    }
+    reflection.addShaderStorageBuffer(
+        block_label,
+        kDescriptorSet,
+        binding,
+        from_spirv.getShaderStorageBufferBlockSize(block_label));
+    for (auto const name : from_spirv.getAllShaderStorageBufferAttrNames()) {
+      auto const& info = from_spirv.getShaderStorageBufferAttrItemInfo(name);
+      if (info.binding_or_location == binding) {
+        reflection.addShaderStorageBufferAttr(name,
+                                              kDescriptorSet,
+                                              binding,
+                                              info.offset,
+                                              info.block_or_array_size,
+                                              info.array_length,
+                                              info.array_stride);
+      }
+    }
+  } else {
+    if (!from_spirv.hasUniformBuffer(block_label) ||
+        from_spirv.getUniformBufferBinding(block_label) != binding) {
+      return false;
+    }
+    reflection.addUniformBuffer(block_label,
+                                kDescriptorSet,
+                                binding,
+                                from_spirv.getUniformBufferBlockSize(block_label));
+    for (auto const name : from_spirv.getAllUniformBufferAttrNames()) {
+      auto const& info = from_spirv.getUniformBufferAttrItemInfo(name);
+      if (info.binding_or_location == binding) {
+        reflection.addUniformBufferAttr(name,
+                                        kDescriptorSet,
+                                        binding,
+                                        info.offset,
+                                        info.block_or_array_size,
+                                        info.array_length,
+                                        info.array_stride);
+      }
+    }
+  }
+  return true;
+}
+
 // Reflects one block's members the way ShaderRedecorator does: one level of struct is
 // flattened, with UBO children named member.child and SSBO children by their own name,
 // and an array of arrays is reduced to its element count and element stride
@@ -343,6 +402,10 @@ void reflect_parameter(VariableLayoutReflection* param,
       auto* block = type->getElementTypeLayout();
       auto const block_label = block_name(param, block->getName());
       claims.claim(binding, ResourceKind::kUniformBuffer, block_label);
+      if (copy_buffer_from_spirv(
+              BufferKind::kUniform, block_label, binding, from_spirv, reflection)) {
+        return;
+      }
       reflection.addUniformBuffer(block_label,
                                   kDescriptorSet,
                                   binding,
@@ -361,6 +424,10 @@ void reflect_parameter(VariableLayoutReflection* param,
       RUNTIME_EX_ASSERT(block, "Cannot lay out storage block '" + name + "'");
       auto const block_label = block_name(param, element->getName());
       claims.claim(binding, ResourceKind::kShaderStorageBuffer, block_label);
+      if (copy_buffer_from_spirv(
+              BufferKind::kStorage, block_label, binding, from_spirv, reflection)) {
+        return;
+      }
       reflection.addShaderStorageBuffer(block_label,
                                         kDescriptorSet,
                                         binding,

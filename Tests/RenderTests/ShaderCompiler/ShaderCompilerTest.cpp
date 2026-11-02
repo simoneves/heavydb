@@ -1130,7 +1130,11 @@ TEST_F(GeneralShaderCompilerTest, SlangReflectionParityTest) {
   // the array, and nests them for an array of arrays. The reflection has to look
   // through that, or tiles[i].x is recorded as tiles.data.x, the array shape is lost,
   // and an array of structs trips the check against nested structs. The two-
-  // dimensional member matches PPLL_BATCH_STAT_COUNTERS_SSBO's batch_stats.
+  // dimensional member matches PPLL_BATCH_STAT_COUNTERS_SSBO's batch_stats, and an
+  // array inside a struct, the PBR shaders' MaterialProperties.pad, is wrapped too.
+  // ALIGN_SSBO is laid out by std430 alignment, which Slang's reflection API does not
+  // apply: aligned has to start at 16, and Light, as the PBR shaders' light array,
+  // takes a stride of 32 rather than its unpadded 20.
   std::string const source = R"glsl(#version 460
 #extension GL_EXT_shader_explicit_arithmetic_types : enable
 #extension GL_EXT_scalar_block_layout : require
@@ -1156,9 +1160,19 @@ layout(std430, binding = 1) buffer ARRAY_SSBO {
   Tile tiles[4];
   Stats batch_stats[2][5];
 };
+struct Light {
+  vec4 color;
+  int type;
+};
+layout(std430, binding = 2) buffer ALIGN_SSBO {
+  float lone;
+  vec4 aligned;
+  Light lights[];
+};
 void main() {
   tiles[1].x = int(colors[2].x + scalar + transform[2][1] + after_transform);
   batch_stats[1][3].max_count = 7u;
+  lights[2].color = aligned * lone;
 }
 )glsl";
 

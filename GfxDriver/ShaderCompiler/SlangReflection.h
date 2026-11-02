@@ -33,9 +33,11 @@ namespace gfx {
 // constant block's span and both of its names, and the scalar type whitelist. Throws
 // on anything it cannot represent, and on a binding clash anywhere in the material.
 //
-// `from_spirv` is each stage's reflection read from its SPIR-V. The layout is
-// authoritative except for push constant member offsets, which it gets wrong for a
-// member placed with [[vk::offset]], and which are taken from the SPIR-V instead.
+// `from_spirv` is each stage's reflection read from its SPIR-V. The layout decides
+// which resources there are and their bindings, but two things are taken from the
+// SPIR-V wherever it has them, because Slang's reflection API gets them wrong: a buffer
+// block's size and member layout, which it computes with scalar alignment whatever the
+// block declares, and push constant member offsets, which ignore [[vk::offset]].
 std::vector<ShaderReflection> reflect_slang_material(
     slang::ICompileRequest& request,
     const std::vector<ShaderCompilerBackend::StageSource>& stages,
