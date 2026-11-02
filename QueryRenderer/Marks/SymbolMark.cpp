@@ -701,6 +701,11 @@ void SymbolMark::updateShader() {
       auto fragment_inputs_str = fragment_inputs.createInterfaceBlockString(true);
       stroke_geom_builder->replaceFirstTag("FragmentShaderInputs", fragment_inputs_str);
       stroke_frag_builder->replaceFirstTag("FragmentShaderInputs", fragment_inputs_str);
+      // The geometry shader's Slang form of both
+      stroke_geom_builder->replaceFirstTag("GeometryShaderInputsSlang",
+                                           geometry_inputs.createSlangStructString(true));
+      stroke_geom_builder->replaceFirstTag("FragmentShaderInputsSlang",
+                                           fragment_inputs.createSlangStructString(true));
 
       geom_stroke_builders.push_back(std::move(stroke_vert_builder));
       geom_stroke_builders.push_back(std::move(stroke_frag_builder));

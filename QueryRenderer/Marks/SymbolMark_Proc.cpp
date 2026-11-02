@@ -480,6 +480,11 @@ void SymbolMark_Proc::updateShader() {
         "GeometryShaderInputs",
         geometry_inputs->createInterfaceBlockString(true, std::nullopt, true));
     builders[2]->replaceFirstTag("FragmentShaderInputs", fragment_inputs_str);
+    // The geometry shader's Slang form of both
+    builders[2]->replaceFirstTag("GeometryShaderInputsSlang",
+                                 geometry_inputs->createSlangStructString(true));
+    builders[2]->replaceFirstTag("FragmentShaderInputsSlang",
+                                 fragment_inputs.createSlangStructString(true));
   } else {
     builders[0]->replaceFirstTag("FragmentShaderInputs", fragment_inputs_str);
   }

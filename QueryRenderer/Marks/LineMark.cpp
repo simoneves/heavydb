@@ -145,6 +145,11 @@ void LineMark::buildShaders(ShaderBuilderVector& builders,
   auto fragment_inputs_str = fragment_inputs.createInterfaceBlockString(true);
   builders[1]->replaceFirstTag("FragmentShaderInputs", fragment_inputs_str);
   builders[2]->replaceFirstTag("FragmentShaderInputs", fragment_inputs_str);
+  // The geometry shader's Slang form of both
+  builders[2]->replaceFirstTag("GeometryShaderInputsSlang",
+                               geometry_inputs.createSlangStructString(true));
+  builders[2]->replaceFirstTag("FragmentShaderInputsSlang",
+                               fragment_inputs.createSlangStructString(true));
 
   builders[0]->replaceFirstTag("VertexProperties", buildVertexShaderInputs());
   builders[0]->replaceFirstTag("UniformProperties",

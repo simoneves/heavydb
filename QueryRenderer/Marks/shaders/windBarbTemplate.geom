@@ -17,7 +17,12 @@
 // flat uint gBarbId[]
 // flat float gDirection[] // only if not uniform
 // flat float gAnchorScale[]
+#ifdef __SLANG__
+// Slang's form of the inputs and outputs: see Slang/slangGeometry.glsl
+<GeometryShaderInputsSlang>
+#else
 <GeometryShaderInputs>
+#endif
 
 // Outputs
 
@@ -31,7 +36,17 @@
 // flat vec4 fFillColor
 // flat vec4 fStrokeColor
 // flat float fStrokeWidth
+#ifdef __SLANG__
+<FragmentShaderInputsSlang>
+#define SLANG_GEOMETRY_IN GeometryShaderInputs
+#define SLANG_GEOMETRY_IN_MEMBERS GeometryShaderInputs_MEMBERS
+#define SLANG_GEOMETRY_IN_COUNT 1
+#define SLANG_GEOMETRY_OUT FragmentShaderInputs
+#define SLANG_GEOMETRY_OUT_MEMBERS FragmentShaderInputs_MEMBERS
+#else
 out <FragmentShaderInputs>;
+#endif
+#include "Slang/slangGeometry.glsl"
 
 #define useUdirection <useUdirection>
 
@@ -48,10 +63,12 @@ layout(std430) uniform FAST_SYMBOL_GEOM_UBO_TYPE {
 #define NUM_BARB_TYPES <numBarbTypes>
 #define DO_MIRROR_Y <doMirrorY>
 
+#ifndef __SLANG__
 layout(points) in;
 layout(triangle_strip, max_vertices = 4) out;
+#endif
 
-void processVertex() {
+void processVertex(SLANG_GEOMETRY_STREAM) {
   float point_size = gPointSize[0];
 
   float out_stroke_width = gStrokeWidth[0];
@@ -153,10 +170,23 @@ void processVertex() {
   EmitVertex();
 }
 
-void main() {
+void geometry_main(SLANG_GEOMETRY_STREAM) {
   // check for garbage vertex sentinel
   if (gBarbId[0] < NUM_BARB_TYPES) {
-    processVertex();
+    processVertex(SLANG_GEOMETRY_STREAM_ARG);
   }
   EndPrimitive();
 }
+
+#ifdef __SLANG__
+[maxvertexcount(4)]
+void main(point GeometryShaderInputs slang_geometry_input_[1],
+          SLANG_GEOMETRY_STREAM) {
+  SLANG_GEOMETRY_LOAD_INPUTS();
+  geometry_main(SLANG_GEOMETRY_STREAM_ARG);
+}
+#else
+void main() {
+  geometry_main();
+}
+#endif

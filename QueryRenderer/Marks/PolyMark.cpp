@@ -338,6 +338,11 @@ void PolyMark::updateShader() {
     auto fragment_inputs_str = fragment_inputs.createInterfaceBlockString(true);
     line_builders[1]->replaceFirstTag("FragmentShaderInputs", fragment_inputs_str);
     line_builders[2]->replaceFirstTag("FragmentShaderInputs", fragment_inputs_str);
+    // The geometry shader's Slang form of both
+    line_builders[2]->replaceFirstTag("GeometryShaderInputsSlang",
+                                      geometry_inputs.createSlangStructString(true));
+    line_builders[2]->replaceFirstTag("FragmentShaderInputsSlang",
+                                      fragment_inputs.createSlangStructString(true));
 
     buildShaders(line_builders,
                  used_stroke_props_const_,
