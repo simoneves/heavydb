@@ -236,7 +236,7 @@ TEST_F(ExperimentalTest, MeshShaderWorkgroupIDTest) {
 
   std::array<float, 2> dimensions{static_cast<float>(render_width),
                                   static_cast<float>(render_height)};
-  ASSERT_NO_THROW(material->setUniformAttribute("imageSize", dimensions));
+  ASSERT_NO_THROW(material->setUniformAttribute("viewportSize", dimensions));
   ASSERT_NO_THROW(material->updateDescriptorSets());
 
   // pipeline
@@ -339,7 +339,7 @@ TEST_F(ExperimentalTest, MeshShaderPointsTest) {
 
   std::array<float, 2> dimensions{static_cast<float>(render_width),
                                   static_cast<float>(render_height)};
-  ASSERT_NO_THROW(material->setUniformAttribute("imageSize", dimensions));
+  ASSERT_NO_THROW(material->setUniformAttribute("viewportSize", dimensions));
   ASSERT_NO_THROW(material->updateDescriptorSets());
 
   // pipeline
@@ -438,7 +438,7 @@ TEST_F(ExperimentalTest, TaskShaderTest) {
 
   std::array<uint32_t, 2> dimensions{render_width, render_height};
   // Set image size in both task and mesh stages (we don't support shared UBOs)
-  ASSERT_NO_THROW(material->setUniformAttribute("imageSize", dimensions));
+  ASSERT_NO_THROW(material->setUniformAttribute("viewportSize", dimensions));
   ASSERT_NO_THROW(material->setUniformAttribute("imageSizeM", dimensions));
   ASSERT_NO_THROW(material->updateDescriptorSets());
 

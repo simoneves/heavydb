@@ -269,7 +269,7 @@ TEST_F(QueryRendererTest, DrawAntialiasedQuadTest) {
   // set uniforms
   std::array<float, 2> image_size{static_cast<float>(render_width),
                                   static_cast<float>(render_height)};
-  material->setUniformAttribute("imageSize", image_size);
+  material->setUniformAttribute("viewportSize", image_size);
   // Offset from screen center to check for projection / coord system mismatch
   material->setUniformAttribute("screenOffset", std::array<float, 2>{-0.2f, -0.2f});
   material->updateDescriptorSets();
@@ -471,7 +471,7 @@ TEST_F(QueryRendererTest, DrawAntialiasedPointsTest) {
   // set uniforms
   std::array<float, 2> image_size{static_cast<float>(render_width),
                                   static_cast<float>(render_height)};
-  material->setUniformAttribute("imageSize", image_size);
+  material->setUniformAttribute("viewportSize", image_size);
   material->updateDescriptorSets();
 
   auto* ms_framebuffer = gpu_data.getRenderFramebuffer()->getFramebuffer();

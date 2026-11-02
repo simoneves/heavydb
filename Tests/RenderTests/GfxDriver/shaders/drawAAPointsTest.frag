@@ -8,7 +8,7 @@ layout(location = 0) out vec4 color;
 layout(location = 0) in float fPointSize;
 
 layout(std430) uniform POINTS_SHADER_UBO_TYPE {
-  vec2 imageSize;
+  vec2 viewportSize;
 };
 
 const vec2 center = vec2(0.5, 0.5);

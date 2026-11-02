@@ -6,13 +6,13 @@
 layout(location = 0) out vec4 color;
 
 layout(std430) uniform WSI_GRADIENT_UBO_TYPE {
-  vec2 imageSize;
+  vec2 viewportSize;
   vec4 gradColor1;
   vec4 gradColor2;
 };
 
 void main() {
-  vec2 uv = vec2(gl_FragCoord.x / imageSize.x, gl_FragCoord.y / imageSize.y);
+  vec2 uv = vec2(gl_FragCoord.x / viewportSize.x, gl_FragCoord.y / viewportSize.y);
 
   // checker
   const float checker_scale = 20.0;

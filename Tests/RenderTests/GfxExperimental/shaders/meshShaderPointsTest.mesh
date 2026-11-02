@@ -19,7 +19,7 @@ layout (location = 0) out PerVertexData {
 } v_out[];
 
 layout(std430) uniform MESH_SHADER_UBO_TYPE {
-  vec2 imageSize;
+  vec2 viewportSize;
 };
 
 void main()

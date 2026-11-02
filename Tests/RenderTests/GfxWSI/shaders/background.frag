@@ -17,7 +17,7 @@ layout(std430) uniform MULTISYMBOL_BG_TYPE {
   int mode;
   vec3 solidColor;
   vec3 gridColor;
-  vec2 imageSize;
+  vec2 viewportSize;
   uint symbolFlags;
 };
 
@@ -38,10 +38,10 @@ void main() {
   if (mode == kModeSolid) {
     color = vec4(solidColor, 1);
   } else if (mode == kModeGrid || mode == kModeEditor) {
-    vec2 p = (gl_FragCoord.xy - (imageSize / 2.0));
-    float g1 = grid(p, imageSize.x / 4.0, 5.0);
-    float g2 = grid(p, imageSize.x / 12.0, 2.5);
-    float g3 = grid(p, imageSize.x / 36.0, 1.0);
+    vec2 p = (gl_FragCoord.xy - (viewportSize / 2.0));
+    float g1 = grid(p, viewportSize.x / 4.0, 5.0);
+    float g2 = grid(p, viewportSize.x / 12.0, 2.5);
+    float g3 = grid(p, viewportSize.x / 36.0, 1.0);
     vec3 c = mix(gridColor, solidColor, clamp(g1 * g2 * g3, 0.0, 1.0));
     if (mode == kModeEditor) {
       if ((symbolFlags & FLAG_XY_SYMMETRY) == FLAG_XY_SYMMETRY) {

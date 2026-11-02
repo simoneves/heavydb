@@ -125,7 +125,7 @@ TEST_F(RenderTest, DrawFullscreenTriangle) {
   ASSERT_NE(material, nullptr);
   std::array<float, 2> dimensions{static_cast<float>(render_width),
                                   static_cast<float>(render_height)};
-  material->setUniformAttribute("imageSize", dimensions);
+  material->setUniformAttribute("viewportSize", dimensions);
   material->setUniformAttribute("invertY", 0);
 
   material->updateDescriptorSets();
@@ -2353,7 +2353,7 @@ TEST_F(VulkanRenderTest, DISABLED_DeviceLostTest) {
     // materials
     auto timeout_material = resource_mgr.createMaterial("Test", timeout_caches);
     ASSERT_NE(timeout_material, nullptr);
-    timeout_material->setUniformAttribute("imageSize", dimensions);
+    timeout_material->setUniformAttribute("viewportSize", dimensions);
     timeout_material->setUniformAttribute("invertY", 0);
     timeout_material->setUniformAttribute("loopEnd", 0);
     timeout_material->updateDescriptorSets();
@@ -2425,7 +2425,7 @@ TEST_F(VulkanRenderTest, DISABLED_DeviceLostTest) {
     // draw fullscreen material
     auto render_material = resource_mgr.createMaterial("Test", render_caches);
     ASSERT_NE(render_material, nullptr);
-    render_material->setUniformAttribute("imageSize", dimensions);
+    render_material->setUniformAttribute("viewportSize", dimensions);
     render_material->setUniformAttribute("invertY", 0);
 
     render_material->updateDescriptorSets();
