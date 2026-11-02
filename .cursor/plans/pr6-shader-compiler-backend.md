@@ -68,7 +68,7 @@ Pure refactor. Verified by the render suite, ShaderCompilerTest's goldens not mo
 
 - `ENABLE_SLANG` CMake option, default OFF until OSRB clears. With it off, nothing Slang-related is compiled or linked, and the backend selection option rejects `slang` with a clear message.
 - `find_package(slang CONFIG)`: the deps prefix has `lib/cmake/slang/slangConfig.cmake`.
-- Slang ships only as shared libraries: `libslang.so` and `libslang-compiler.so`, plus `libslang-glsl-module-<ver>.so`, which is what `-allow-glsl` loads at runtime, and `libslang-glslang-<ver>.so`, which only the `-emit-spirv-via-glsl` path uses. Confirm which are loaded when compiling GLSL to SPIR-V directly, and make sure packaging carries exactly those; that list is also what OSRB is being asked about.
+- Slang ships only as shared libraries: `libslang.so` and `libslang-compiler.so`, plus `libslang-glsl-module-<ver>.so`, which is what `-allow-glsl` loads at runtime, and `libslang-glslang-<ver>.so`, which only the `-emit-spirv-via-glsl` path uses. (Wrong, as it turned out: Slang loads it to run spirv-opt on every optimized compile. The backend now turns optimization off and compiles the GLSL module itself, so neither of the extra libraries is loaded; see all-shaders-through-slang.md.) Confirm which are loaded when compiling GLSL to SPIR-V directly, and make sure packaging carries exactly those; that list is also what OSRB is being asked about.
 
 ## 6c: the Slang backend
 

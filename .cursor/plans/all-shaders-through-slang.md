@@ -32,6 +32,9 @@ todos:
   - id: marks
     content: "Move the Marks family by family, each proven per test against glslang: reflection, execution modes, and be-render-tests failing tests rerun against each backend"
     status: pending
+  - id: static-slang
+    content: "Link Slang statically, as glslang is. The backend already needs nothing at run time but the compiler library (commit 'Need only Slang\'s compiler library at run time'). What is left is the deps build: build Slang with -DSLANG_LIB_TYPE=STATIC, then find out which static archives it installs, list them in FindSlang, and check for symbol clashes with heavydb's static glslang and SPIRV-Tools and for the size it adds (the shared library is 34 MB). User-run, since it needs a deps rebuild"
+    status: pending
   - id: remaining-stages
     content: "geoCount, accumulationCompositePeer, accumulatorScale_2ndPass, multiGpuCompositeIDs, the shading family and the test shaders, as the items above unblock them"
     status: pending
@@ -167,6 +170,15 @@ Slang is 13 to 37 times slower than glslang on the same source (`DISABLED_SlangC
 ## 7. Move the Marks, then the rest
 
 Once sections 1 to 3 have answers, move the Marks family by family: point, symbol and fastSymbol, line, mesh2d, PolyMark, windBarb. For each, opt in, then prove it with reflection and execution modes against glslang, the render suite in both modes, and be-render-tests with every failing test rerun against each backend. Then `geoCount`, `accumulationCompositePeer`, `accumulatorScale_2ndPass` (unblocked by section 1), `SeparateMultiSample` (section 4), and the test shaders.
+
+## Linking Slang statically
+
+glslang is linked into heavydb statically; Slang was linked as a shared library plus two more loaded at run time. Since commit "Need only Slang's compiler library at run time", the backend loads nothing but `libslang-compiler`:
+- **The GLSL module** is compiled by the backend with `compileBuiltinModule`, rather than requested with `enableGLSL`, which looks for `libslang-glsl-module-<version>` and, without it, compiles the module anyway and writes a `slang-glsl-module.bin` cache next to whichever binary holds Slang: the server's executable, once Slang is static. About 0.4 seconds once per backend. A faster alternative, if that ever matters, is to embed the precompiled module (about 1 MB, `saveBuiltinModule`) at build time and pass it to `loadBuiltinModule`, at the cost of a build step tied to the exact Slang version.
+- **Optimization is off.** Slang runs `spirv-opt` through `libslang-glslang-<version>`, and every optimized compile fails without it. Unoptimized output is identical with or without the library; glslang's output is not optimized either.
+- **A GLSL module compiled from source leaks its built-in variables** into the program layout, `gl_Position` and the rest, as though the shader declared them; the precompiled one does not. The layout reflection skips them.
+
+What is left is the deps build: Slang's CMake has `SLANG_LIB_TYPE=STATIC` (the default is `SHARED`), and its comments say a static install now exports cleanly. Untried: which static archives it installs, symbol clashes with heavydb's static glslang and SPIRV-Tools, and the size it adds.
 
 ## What this does not cover
 
