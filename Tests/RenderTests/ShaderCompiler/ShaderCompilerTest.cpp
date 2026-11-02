@@ -1369,24 +1369,55 @@ TEST_F(GeneralShaderCompilerTest, SlangUnreachedMaterialsTest) {
   // real pipeline with each compiler preferred in turn: each must go through Slang
   // when asked, and reflect and run exactly as it does through glslang.
   constexpr uint32_t kSlangGenerator = 40;
+  // The table function test's and the WSI tests' shaders, which this library lacks
+  auto& library = this->shaderMgr->getLibrary();
+  library.addFromManifestFile(
+      "ShaderManifest.json",
+      std::string(GFX_DRIVER_PATH) +
+          "../QueryEngine/TableFunctions/SystemFunctions/shaders/");
+  library.addFromManifestFile("ShaderManifest.json",
+                              std::string(RENDER_TESTS_PATH) + "GfxWSI/shaders/");
+  // Each material's templates, and the tags its owner fills in all of them
+  struct UnreachedMaterial {
+    std::vector<std::string> names;
+    std::vector<std::pair<std::string, std::string>> tags;
+  };
   // clang-format off
-  std::vector<std::vector<std::string>> const materials({
-      // Needs a second GPU
-      {"Rendering/fullScreenTriangle.vert", "Rendering/accumulationCompositePeer.frag"},
+  std::vector<UnreachedMaterial> const materials({
+      // Need a second GPU
+      {{"Rendering/fullScreenTriangle.vert", "Rendering/accumulationCompositePeer.frag"}, {}},
+      {{"Rendering/multiGpuCompositeIDs.comp"},
+       {{"numSamples", "1"}, {"doMultiSample", "0"}, {"workgroupSize", "32"}}},
+      {{"Rendering/multiGpuCompositeIDs.comp"},
+       {{"numSamples", "4"}, {"doMultiSample", "1"}, {"workgroupSize", "32"}}},
+      // A system table function's render test, which nothing here calls
+      {{"TableFunctions/tableFunctionTest.vert", "TableFunctions/tableFunctionTest.frag"}, {}},
+      // Windowed: GfxWSITest is not built without a display, and the ImGui overlay is
+      // only drawn there
+      {{"WSITests/fullScreenTriangle.vert", "WSITests/wsiTestGradient.frag"}, {}},
+      {{"WSITests/fullScreenTriangle.vert", "WSITests/background.frag"}, {}},
+      {{"ImGui/imgui_shader.vert", "ImGui/imgui_shader.frag"}, {}},
   });
   // clang-format on
-  auto const build = [this](const std::vector<std::string>& names,
+  auto const build = [this](const UnreachedMaterial& material,
                             ShaderCompilerBackendType backend) {
     this->shaderMgr->setPreferredCompilerBackend(backend);
     std::vector<ShaderManager::Builder::ConstructionArgs> params;
-    for (auto const& name : names) {
+    for (auto const& name : material.names) {
       params.push_back({name});
     }
-    return this->shaderMgr->createCacheVectorFromTemplate(params);
+    auto builders = this->shaderMgr->createBuilderVector(params);
+    for (auto& builder : builders) {
+      for (auto const& [tag, value] : material.tags) {
+        builder->replaceFirstTag(tag, value);
+      }
+    }
+    return this->shaderMgr->createCacheVector(std::move(builders));
   };
-  for (auto const& names : materials) {
-    auto const by_glslang = build(names, ShaderCompilerBackendType::kGlslang);
-    auto const by_slang = build(names, ShaderCompilerBackendType::kSlang);
+  for (auto const& material : materials) {
+    auto const& names = material.names;
+    auto const by_glslang = build(material, ShaderCompilerBackendType::kGlslang);
+    auto const by_slang = build(material, ShaderCompilerBackendType::kSlang);
     ASSERT_EQ(by_glslang.size(), names.size());
     ASSERT_EQ(by_slang.size(), names.size());
     for (size_t i = 0; i < names.size(); ++i) {

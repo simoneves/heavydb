@@ -5,28 +5,32 @@
       "file_path": ".",
       "internal_path": "ImGui/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "imgui_shader.frag",
       "file_path": ".",
       "internal_path": "ImGui/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "fullScreenTriangle.vert",
       "file_path": ".",
       "internal_path": "WSITests/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "wsiTestGradient.frag",
       "file_path": ".",
       "internal_path": "WSITests/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "symbolSandbox_FragMain.glsl",
@@ -47,7 +51,8 @@
       "file_path": ".",
       "internal_path": "WSITests/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     }
   ]
 }
