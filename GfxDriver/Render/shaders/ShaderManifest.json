@@ -147,6 +147,13 @@
       "class": "glsl"
     },
     {
+      "filename": "rtTraceRay.glsl",
+      "file_path": "./Raytracing/",
+      "internal_path": "Shading/",
+      "language": "glsl",
+      "class": "glsl"
+    },
+    {
       "filename": "rtShadowsSimple.glsl",
       "file_path": "./Raytracing/",
       "internal_path": "Shading/",
