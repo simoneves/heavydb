@@ -82,6 +82,8 @@ All 147 stages in every manifest are opted in, production and test alike. With S
 
 **Opt-in flags and the switch removed (2026-11-02).** `"slang"` is gone from the manifests, the schema, the generated library and `Library::Item`, and so is `OMNISCI_shader_compiler_backend`. A build with Slang compiles every material with Slang, and one without compiles with glslang. `ShaderManager::setCompilerBackend` remains, for the tests that compare the two compilers or test glslang itself. A consequence is that in an `ENABLE_SLANG` build the render suite and be-render-tests no longer run through glslang at all; only an `ENABLE_SLANG=off` build does, and that build has not been run since.
 
+**glslang removed (2026-11-02).** PR 7 landed: see remaining-slang-migration-work.md. Every material is compiled by Slang, the shaders have no `__SLANG__` conditionals left, and the server links no glslang library. be-render-tests: 441 passing, the two known failures.
+
 **Left to do:**
 - **Compile time** (section 6): untouched by request. Every Mark now pays Slang's cost, so the compiled-material cache is the obvious next step.
 - **Upstream Slang reports**, now with these reproducers:
@@ -92,7 +94,8 @@ All 147 stages in every manifest are opted in, production and test alike. With S
   - scalar layout of GLSL buffer blocks in reflection;
   - mesh output read-back;
   - inheritance internal error.
-- **Saved Manual builders** for the line and fastSymbol templates predate the `<...Slang>` tags. They are compiled through glslang only (the Legacy cases), and would need recapturing to go through Slang.
+- **Saved Manual builders** for the line and fastSymbol templates predate the `<...Slang>` tags, and stay commented out of the Legacy cases. The point template's two do compile through Slang. The others would need recapturing.
+- **Full deps rebuild**, to confirm nothing needs the glslang headers that are no longer copied into the prefix.
 - **A new manifest entry needs CMake re-run**: the generated shader sources are listed at configure time. Making the manifests configure dependencies would fix that.
 - **Unrelated bug found:** a wind barb Vega that omits `quantizeDirection` fails, because the property is declared `INT` but defaults to `true`.
 

@@ -6,7 +6,7 @@ todos:
     content: "Restore slang to the ./vulkansdk target list in install_vulkan. PR 5a's plan added it, but the commit that landed left it out, so Slang was not in the deps prefix until this. Predecessor of PR 0b and PR 6. Landed as 61bc82fc65 (Add Slang build)"
     status: completed
   - id: osrb
-    content: Slang OSRB approval and attribution. External gate on merging PR 6 onward; start now, independent of all code work
+    content: "Slang OSRB approval and attribution. External gate on merging PR 6 onward; start now, independent of all code work. Assumed to go through (2026-11-02), and PR 7 has landed on that assumption"
     status: pending
   - id: spike-slang-glsl
     content: "PR 0b: Compile the shader corpus through slangc -allow-glsl and classify failures, reporting Tests/ and non-Tests/ counts separately. Prefer assembled final_glsl over raw sources. No dependencies; gates the scope of PRs 6, 7 and 8. First pass done 2026-11-01, results under PR 0b below: 18 of 56 production stages verified clean, 13 need Slang-native rewrites, 10 need mechanical fixes, 15 could not be judged because the render suite never assembles them. Second pass the same day ran be-render-tests against the server with shader capture and compared reflection with glslang: no layout differences once -matrix-layout-row-major is used, but two silent miscompiles (texelFetch on sampler2DMS drops the sample index; unsuffixed double literals narrowed to float). Remaining items are optional"
@@ -21,8 +21,8 @@ todos:
     content: "PR 4b: Replace IoMapResolver with glslang's TDefaultGlslIoResolver, delete the three sentinels and ShaderRedecorator's allocation and SPIR-V patching, and re-aim the clash check at verifying glslang's output. Landed as 03bafb57a2. Two of the nine goldens moved, and it corrected a long-standing bug that gave an array of resources one binding per element. Did not unblock PR 5c part 3 after all"
     status: completed
   - id: drop-copy-block
-    content: "PR 5c part 3: Delete the 13-header copy block and the two mkdir guards from common-functions.sh. Now needs PR 7, not PR 4b: GlslangWrapper.cpp still includes iomapper.h for TGlslIoMapper and TDefaultGlslIoResolver, which are declared nowhere public. Verify with a full deps rebuild, since these 13 are genuinely not installed by glslang"
-    status: pending
+    content: "PR 5c part 3: Delete the 13-header copy block and the two mkdir guards from common-functions.sh. Now needs PR 7, not PR 4b: GlslangWrapper.cpp still includes iomapper.h for TGlslIoMapper and TDefaultGlslIoResolver, which are declared nowhere public. Verify with a full deps rebuild, since these 13 are genuinely not installed by glslang. Landed as bd39d71dc9 after PR 7; the full deps rebuild is still to do"
+    status: completed
   - id: instance-1.4
     content: "PR 5d (optional): Raise kVulkanInstanceApiVersion to Vulkan 1.4. No dependencies and nothing depends on it. No technical upside; costs the NVIDIA driver floor rising from 535 to roughly R570. Take only if something else needs 1.4"
     status: pending
@@ -30,8 +30,8 @@ todos:
     content: "PR 6: Introduce a ShaderCompilerBackend interface behind ShaderManager.h:315's concrete GlslangWrapperUqPtr and add a flag-gated Slang implementation with ISlangFileSystem over Library. Needs PR 0b for scoping and OSRB to merge. Developed 2026-11-01, see pr6-shader-compiler-backend.md: fifteen stages opt in and pass be-render-tests through Slang. Getting the rest there is planned in all-shaders-through-slang.md. Merging still waits on OSRB"
     status: completed
   - id: slang-default
-    content: "PR 7: Switch the default to Slang, delete ShaderRedecorator and ResourceLimits, populate ShaderReflection from Slang reflection, and reimplement clash diagnostics, struct-flattening names, the type whitelist, array dimensions and push constants. Needs PR 6; smaller now that PR 4b has landed. Also required by PR 5c part 3"
-    status: pending
+    content: "PR 7: Switch the default to Slang, delete ShaderRedecorator and ResourceLimits, populate ShaderReflection from Slang reflection, and reimplement clash diagnostics, struct-flattening names, the type whitelist, array dimensions and push constants. Needs PR 6; smaller now that PR 4b has landed. Also required by PR 5c part 3. Landed 2026-11-02 as e7839a8a18, d410316913, 9eaa579489 and 9e73df6744; see PR 7 below. ShaderRedecorator was kept, as the SPIR-V reader Slang's layout is checked against"
+    status: completed
   - id: shader-migration
     content: "PR 8+: Migrate shader sources to Slang modules and generics incrementally behind the PR 6 flag, retiring the string-splicing Builder and superseding PR 3's textual subroutine pass"
     status: pending
@@ -281,6 +281,17 @@ Purely additive. `ShaderManager.h:315` holds a concrete `GlslangWrapperUqPtr gls
 That file system is not optional detail: per the PR 3 findings above, the assembled source carries `#include` directives rather than their text, so a Slang backend without it sees shaders whose functions are largely undefined.
 
 ## PR 7 - Switch the default to Slang, delete ShaderRedecorator
+
+**Landed (2026-11-02), with one deviation: `ShaderRedecorator` stays.** Reflection comes from Slang's program layout (`SlangReflection`), which has the resources Slang's SPIR-V drops, and each stage is also read from its SPIR-V by `ShaderRedecorator`. The two must agree, and the SPIR-V supplies what Slang's reflection API gets wrong: buffer layout under std430/std140, and push constant offsets under `[[vk::offset]]`. The commits:
+
+- `e7839a8a18` - The inline-shader reflection tests compare against goldens under `Tests/RenderTests/ShaderCompiler/Inline/Results`, written from glslang while both compilers were built, rather than against glslang live.
+- `d410316913` - The explicit-location check is replaced by matching each stage's inputs against the previous stage's outputs, from the SPIR-V, by location and type (an output may be a wider vector). Slang cannot tell an explicit location from one it assigned, so this is the form that survives. The exemptions carry over: built-ins are skipped, as are the per-vertex arrays of geometry inputs and mesh outputs, and vertex inputs and fragment outputs are not cross-stage. It checks real pairs across vertex, geometry, mesh and fragment stages in the render suite and be-render-tests, with no false positives.
+- `9eaa579489` - glslang removed: `GlslangWrapper`, `ResourceLimits` and `SerializationTest`, `ShaderCompilerBackendType` and `setCompilerBackend`, `ENABLE_SLANG` and `HAVE_SLANG`. A rendering build requires Slang. `FindGlslang` became `FindSpirvTools`. Every golden regenerates from Slang unchanged. The one test difference: an unlocated vertex input gets location 2 from Slang where glslang gave 0.
+- `9e73df6744` - The glslang side of every `__SLANG__` conditional in the shaders, and the Mark code that filled the geometry stage's GLSL interface tags, which no template had any more. The GfxWSI sandboxes, which only filled those tags, now fill the Slang structs; they are built only with a display, so that change is uncompiled.
+
+The seven behaviours below were all reproduced, and the tests pinning them pass. Still open from this section: the PR 895 limitation (an auto-assigned binding in an earlier stage taking a number a later stage declares explicitly) has not been tested against Slang, and the push constant ranges are still hand-written rather than derived from reflection.
+
+The original plan follows.
 
 **Depends on:** PR 6. Smaller now that PR 4b has reduced `ShaderRedecorator` to reflection extraction plus a clash check.
 **Required by:** PR 5c part 3, which only this can unblock.
