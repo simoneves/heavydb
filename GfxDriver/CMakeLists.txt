@@ -252,6 +252,10 @@ target_compile_definitions(GfxDriver PRIVATE ${GFXDRIVER_DEFS})
 if(ENABLE_SLANG)
   # Public, since it decides whether SlangBackend.h declares anything
   target_compile_definitions(GfxDriver PUBLIC HAVE_SLANG)
+  if(Slang_STATIC)
+    # How slang.h declares its API when Slang is linked statically
+    target_compile_definitions(GfxDriver PRIVATE SLANG_STATIC)
+  endif()
 endif()
 
 # expose the definitions to the parent
