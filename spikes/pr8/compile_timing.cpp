@@ -176,5 +176,16 @@ int main(int argc, char* argv[]) {
       std::cout << "  last compile's report:\n" << compiler.last_diagnostics;
     }
   }
+  // Every shader in one session, as a server keeping its session would: the first
+  // loads any module, and the rest find it loaded
+  auto shared = compiler.createSession();
+  std::cout << "one session shared by all of the above, in order:\n";
+  for (auto const& path : shaders) {
+    auto const source = read_file(path);
+    auto const name = path.substr(path.find_last_of('/') + 1);
+    start = Clock::now();
+    compiler.compile(*shared, name, source);
+    std::cout << "  " << name << ": " << ms_since(start) << " ms\n";
+  }
   return 0;
 }

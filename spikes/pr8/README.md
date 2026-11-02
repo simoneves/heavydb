@@ -1,7 +1,12 @@
 # PR 8 spike: Slang modules and generics for the shader templates
 
-Branch `simoneves_pr8_spike`, from `b28c6906d1`. Nothing here is built by the project;
-the experiments run inside the build container against the deps' Slang.
+Branch `simoneves_pr8_spike`, kept for reference and not for merging. It holds only
+this directory, on `master`, so that it does not depend on the history of the Slang
+migration branch, `simoneves_renderer_upgrade_2026`. The spike was run against that
+branch, though, and needs it: the Slang deps, the server's Slang settings, and the
+`compare_compilers.py` include tree and `SpirvReflect` tool are all from there.
+Nothing here is built by the project; the experiments run inside the build container
+against the deps' Slang.
 
 PR 8 proposes moving the shader templates to Slang modules and generics, replacing
 the Builder's text splicing and the textual subroutine pass. The spike took the
@@ -98,9 +103,70 @@ SPIR-V generation, which an earlier profile put at 9 to 18 ms of a 30 to 36 ms s
 roughly half. That needs a template's whole body off text splicing, the Builder's tags
 included, which is PR 8's real scope.
 
-Suggested next step, if PR 8 goes ahead: port one whole small template, such as a
-post-processing pass or the point template, to a module with a generic entry point,
-and measure what specializing and generating code for one material costs in a
-persistent session. That number decides whether PR 8 is justified by compile time, or
-by the Builder's complexity alone. The in-memory material cache (`55fbb601eb`) already
-removes the repeats.
+The follow-up below did that for the point template.
+
+## Follow-up: a whole template as a module
+
+The point Mark's vertex stage, `pointTemplate.vert` (225 lines as assembled for the
+material be-render-tests captured), ported whole:
+
+- `pointMark.slang` - the template's body, once, as a generic function `pointVertex`,
+  with the shared includes, the colour transform and the Mercator projection the
+  Builder splices in. What varies per material is generic: an `IPointProperties` type
+  (where each property comes from and how it becomes the drawn value), an
+  `IProjection`, an `IColorTransform`, and whether there is a key and multisampling.
+- `point_spliced.vert` - the captured material, as today.
+- `point_module.vert` - the same material as glue: its declarations exactly as today
+  (vertex attributes, uniform blocks, output block), two small structs implementing
+  the interfaces against them, and a `main` calling `pointVertex`. This is what the
+  Builder would generate per material instead of splicing.
+- `point_module_b.vert` - a second kind of point material through the same module:
+  no key, size per vertex, unprojected, no multisampling.
+- `include/Utils/colorConvertSubroutines.glsl` - the shared include with its global
+  `const` made `static const`, which a Slang module requires and Slang's GLSL mode
+  accepts. The real change would be that one word in the shared file.
+
+The captured material's glue compiles, validates, and reflects identically to the
+spliced shader; the second validates and reflects its own declarations. A `.slang`
+module does not see GLSL's built-in names unless it says `import glsl;`, which
+`slangc -allow-glsl` hides but the API does not.
+
+Per compile, ten compiles each:
+
+| Point vertex stage | New session per compile | One session, after the first |
+|---|---|---|
+| spliced, as today | 18.3 ms | 16.8 ms |
+| module, captured material | 19.4 ms | 8.3 ms |
+| module, second material | 17.5 ms | 6.7 ms |
+
+In one session shared by all three in turn, as a server keeping its session would
+have it, the first module material took 18.0 ms, loading the module (about 10 ms of
+that), and the second, a different material, 6.7 ms.
+
+**So a whole template as a module halves the per-material cost or better**: about 7
+to 8 ms against 17, once the module is loaded, which it is once per session. Moving
+only shared pieces into modules (the scale experiment above) does not, because the
+cost is in checking the material's body; moving the body into the module and leaving
+the material only declarations and glue does. Both require SlangBackend to keep one
+session across materials; with a session per material the module is reloaded each
+time and nothing is gained.
+
+The module version's SPIR-V is larger (8.4 KB against 6.9 KB, 17 functions against
+10), because without optimization the interface methods stay separate functions. The
+driver inlines them, but pipeline creation time should be checked before relying on
+it. Not checked: that the module version renders identically.
+
+**For PR 8 this means:** the compile-time case holds, provided whole templates move,
+the Builder generates glue rather than splicing bodies, and SlangBackend keeps a
+session. Across be-render-tests, whose first-time compiles cost about 21 seconds
+after the in-memory cache, that would be roughly half, if the larger templates behave
+like this one. The design questions for PR 8 proper:
+- the persistent session: its lifetime, its memory, module naming, and starting again
+  when the Library is replaced;
+- the interfaces each template needs, which is most of the work: properties from
+  attributes, uniforms and slab reads, with scales, accumulation and row IDs, which
+  this spike did not cover;
+- shared includes made module-clean (`static const`), which glslang no longer
+  constrains;
+- the Builder generating glue: declarations plus the interface implementations, a far
+  smaller job than today's splicing.
