@@ -16,8 +16,7 @@ CreateComputePassResult create_compute_pass(
     const std::string& shader_template,
     const std::string& resource_name,
     const BuilderCallback builder_cb,
-    const std::vector<SpecializationMapEntry>& specializations,
-    const PushConstantRanges& push_constant_ranges) {
+    const std::vector<SpecializationMapEntry>& specializations) {
   auto subgroup_size_str = std::to_string(device.getLimits().subgroup_size);
 
   // Material
@@ -32,8 +31,8 @@ CreateComputePassResult create_compute_pass(
   auto material = resource_mgr.createMaterial(resource_name, cache);
 
   // Pipeline
-  auto pipeline = resource_mgr.createComputePipeline(
-      resource_name, *material, specializations, push_constant_ranges);
+  auto pipeline =
+      resource_mgr.createComputePipeline(resource_name, *material, specializations);
   pipeline->create();
 
   return {std::move(material), std::move(pipeline)};

@@ -516,8 +516,6 @@ TEST_F(RenderTest, PushConstantTest) {
   auto primitive_assembly = resource_mgr.createPrimitiveAssembly(
       "Test", PrimitiveTopology::kTriangleList, *material, attr_info);
   PipelineDescriptor pipeline_desc;
-  pipeline_desc.getPushConstantRanges().insert(
-      ShaderStageBits::kVertex, 0, sizeof(uint32_t));
   auto pipeline = resource_mgr.createGraphicsPipeline(
       "Test", *material, pipeline_desc, primitive_assembly.get());
 
@@ -621,8 +619,6 @@ TEST_F(RenderTest, DepthTest) {
 
   PipelineDescriptor pipeline_desc;
   pipeline_desc.setEnableDepthTest(true);
-  pipeline_desc.getPushConstantRanges().insert(
-      ShaderStageBits::kVertex, 0, sizeof(glm::vec3) + sizeof(float));
   auto pipeline = resource_mgr.createGraphicsPipeline(
       "Test", *material, pipeline_desc, mesh_data.pa.get());
 
@@ -812,8 +808,6 @@ TEST_F(RenderTest, SubpassTest) {
   // 2 pass pipeline (1st pass, stencil write)
   //
   PipelineDescriptor pipeline_desc_multi_1;
-  pipeline_desc_multi_1.getPushConstantRanges().insert(
-      ShaderStageBits::kVertex, 0, sizeof(uint32_t));
   pipeline_desc_multi_1.setFaceCullMode(FaceCullMode::kBack);
   pipeline_desc_multi_1.setEnableDepthTest(false);
   pipeline_desc_multi_1.setEnableStencilTest(true);
@@ -835,8 +829,6 @@ TEST_F(RenderTest, SubpassTest) {
   //
   PipelineDescriptor pipeline_desc_multi_2;
   pipeline_desc_multi_2.setSubpassIndex(1);
-  pipeline_desc_multi_2.getPushConstantRanges().insert(
-      ShaderStageBits::kVertex, 0, sizeof(uint32_t));
   pipeline_desc_multi_1.setFaceCullMode(FaceCullMode::kBack);
   pipeline_desc_multi_2.setEnableDepthTest(true);
   pipeline_desc_multi_2.setEnableStencilTest(true);
@@ -857,8 +849,6 @@ TEST_F(RenderTest, SubpassTest) {
   // 1 pass pipeline (color + depth + stencil test)
   //
   PipelineDescriptor pipeline_desc_single;
-  pipeline_desc_single.getPushConstantRanges().insert(
-      ShaderStageBits::kVertex, 0, sizeof(uint32_t));
   pipeline_desc_multi_1.setFaceCullMode(FaceCullMode::kBack);
   pipeline_desc_single.setEnableDepthTest(true);
   pipeline_desc_single.setEnableStencilTest(true);
@@ -2102,8 +2092,7 @@ TEST_F(VulkanRenderTest, BufferDeviceAddressTest) {
   };
 
   // pipeline
-  PushConstantRange pcr(ShaderStageBits::kCompute, 0, sizeof(PushConstants));
-  auto pipeline = resource_mgr.createComputePipeline("Test", *material, {}, {pcr});
+  auto pipeline = resource_mgr.createComputePipeline("Test", *material);
   pipeline->create();
 
   constexpr uint32_t kNumRows = 100;

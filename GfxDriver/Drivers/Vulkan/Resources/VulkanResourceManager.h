@@ -93,13 +93,11 @@ class VulkanResourceManager : public ResourceManager {
   resource_ptr<ComputePipeline> createComputePipeline(
       std::string_view resource_tracking_string,
       const Material& material,
-      const std::vector<SpecializationMapEntry>& specializations,
-      const PushConstantRanges& push_constants) override;
+      const std::vector<SpecializationMapEntry>& specializations) override;
 
   resource_ptr<RaytracingPipeline> createRaytracingPipeline(
       std::string_view resource_tracking_string,
-      const Material& material,
-      const PushConstantRanges& push_constant_ranges) override;
+      const Material& material) override;
 
   PrimitiveAssemblyUqPtr createPrimitiveAssembly(
       std::string_view resource_tracking_string,

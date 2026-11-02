@@ -9,7 +9,6 @@
 #include <cstdint>
 #include <string_view>
 
-#include "GfxDriver/Pipeline/PushConstantRanges.h"
 #include "GfxDriver/Resources/Enums.h"
 
 namespace gfx {
@@ -106,9 +105,6 @@ class PipelineDescriptor {
     stencil_func_ref_ = ref;
     stencil_func_mask_ = mask;
   }
-  void setPushConstantRanges(const PushConstantRanges& value) {
-    push_constant_ranges_ = value;
-  }
 
   inline uint32_t getSubpassIndex() const { return subpass_index_; }
   inline bool getEnableBlend() const { return enable_blend_; }
@@ -135,10 +131,6 @@ class PipelineDescriptor {
   inline StencilFunc getStencilFunc() const { return stencil_func_; }
   inline int32_t getStencilFuncRef() const { return stencil_func_ref_; }
   inline uint32_t getStencilFuncMask() const { return stencil_func_mask_; }
-  inline const PushConstantRanges& getPushConstantRanges() const {
-    return push_constant_ranges_;
-  }
-  inline PushConstantRanges& getPushConstantRanges() { return push_constant_ranges_; }
 
  private:
   uint32_t subpass_index_;
@@ -166,7 +158,6 @@ class PipelineDescriptor {
   StencilFunc stencil_func_;
   int32_t stencil_func_ref_;
   uint32_t stencil_func_mask_;
-  PushConstantRanges push_constant_ranges_;
 };
 
 }  // namespace gfx

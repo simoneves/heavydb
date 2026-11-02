@@ -23,8 +23,7 @@ class VulkanRaytracingPipeline : public RaytracingPipeline {
  public:
   explicit VulkanRaytracingPipeline(const DeviceContext& device_ctx,
                                     std::string_view resource_tracking_string,
-                                    const Material& material,
-                                    const PushConstantRanges& push_constant_ranges);
+                                    const Material& material);
   ~VulkanRaytracingPipeline() override;
 
   ResourceHandle getPipelineHandle(const uint32_t specialization_id) const override;

@@ -213,22 +213,17 @@ resource_ptr<GraphicsPipeline> VulkanResourceManager::createGraphicsPipeline(
 resource_ptr<ComputePipeline> VulkanResourceManager::createComputePipeline(
     std::string_view resource_tracking_string,
     const Material& material,
-    const std::vector<SpecializationMapEntry>& specializations,
-    const PushConstantRanges& push_constant_ranges) {
-  auto r(std::make_unique<VulkanComputePipeline>(device_ctx_,
-                                                 resource_tracking_string,
-                                                 material,
-                                                 specializations,
-                                                 push_constant_ranges));
+    const std::vector<SpecializationMapEntry>& specializations) {
+  auto r(std::make_unique<VulkanComputePipeline>(
+      device_ctx_, resource_tracking_string, material, specializations));
   return make_resource_ptr<ComputePipeline>(addResource(std::move(r)));
 }
 
 resource_ptr<RaytracingPipeline> VulkanResourceManager::createRaytracingPipeline(
     std::string_view resource_tracking_string,
-    const Material& material,
-    const PushConstantRanges& push_constant_ranges) {
+    const Material& material) {
   auto r(std::make_unique<VulkanRaytracingPipeline>(
-      device_ctx_, resource_tracking_string, material, push_constant_ranges));
+      device_ctx_, resource_tracking_string, material));
   return make_resource_ptr<RaytracingPipeline>(addResource(std::move(r)));
 }
 

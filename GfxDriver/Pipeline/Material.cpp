@@ -5,6 +5,7 @@
 
 #include "GfxDriver/Pipeline/Material.h"
 
+#include <set>
 #include <unordered_set>
 
 #include "GfxDriver/DeviceContext.h"
@@ -12,6 +13,67 @@
 #include "Shared/misc.h"
 
 namespace gfx {
+
+namespace {
+
+ShaderStageBits shader_stage_to_bits(ShaderStage stage) {
+  switch (stage) {
+    case ShaderStage::kVertex:
+      return ShaderStageBits::kVertex;
+    case ShaderStage::kFragment:
+      return ShaderStageBits::kFragment;
+    case ShaderStage::kGeometry:
+      return ShaderStageBits::kGeometry;
+    case ShaderStage::kCompute:
+      return ShaderStageBits::kCompute;
+    case ShaderStage::kRayGen:
+      return ShaderStageBits::kRayGen;
+    case ShaderStage::kAnyHit:
+      return ShaderStageBits::kAnyHit;
+    case ShaderStage::kClosestHit:
+      return ShaderStageBits::kClosestHit;
+    case ShaderStage::kMiss:
+      return ShaderStageBits::kMiss;
+    case ShaderStage::kIntersection:
+      return ShaderStageBits::kIntersection;
+    case ShaderStage::kCallable:
+      return ShaderStageBits::kCallable;
+    case ShaderStage::kMesh:
+      return ShaderStageBits::kMesh;
+    case ShaderStage::kTask:
+      return ShaderStageBits::kTask;
+    case ShaderStage::kTessControl:
+    case ShaderStage::kTessEval:
+      break;
+  }
+  THROW_RUNTIME_EX("Shader stage " + std::to_string(static_cast<int>(stage)) +
+                   " has no push constant stage bit");
+}
+
+}  // namespace
+
+PushConstantRanges Material::getPushConstantRanges() const {
+  PushConstantRanges ranges;
+  for (auto const& cache : shader_caches_) {
+    auto const& reflection = cache->getReflection();
+    // A block is reflected under its type name and its instance name, with one span,
+    // and GLSL allows a stage one block, so every name gives the same range
+    std::set<std::pair<int, int>> spans;
+    for (auto const& name : reflection.getAllPushConstantNames()) {
+      auto const& info = reflection.getPushConstantItemInfo(name);
+      spans.insert({info.offset, info.block_or_array_size});
+    }
+    RUNTIME_EX_ASSERT(spans.size() <= 1,
+                      "Material '" + resource_tracking_string_ +
+                          "' has a stage with more than one push constant span");
+    for (auto const& [offset, size] : spans) {
+      ranges.insert(shader_stage_to_bits(cache->getShaderStage()),
+                    static_cast<uint32_t>(offset),
+                    static_cast<uint32_t>(size));
+    }
+  }
+  return ranges;
+}
 
 Material::Material(const DeviceContext& device_ctx,
                    std::string_view resource_tracking_string,

@@ -21,8 +21,7 @@ class VulkanComputePipeline : public ComputePipeline {
       const DeviceContext& device_ctx,
       std::string_view resource_tracking_string,
       const Material& material,
-      const std::vector<SpecializationMapEntry>& specializations,
-      const PushConstantRanges& push_constant_ranges);
+      const std::vector<SpecializationMapEntry>& specializations);
   ~VulkanComputePipeline() override;
 
   ResourceHandle getPipelineHandle(const uint32_t specialization_id) const override;

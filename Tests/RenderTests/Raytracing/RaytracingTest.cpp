@@ -207,7 +207,7 @@ TEST_F(RaytracingTest, DrawOneSphere) {
   material->setImageLoadStoreAttribute("outputImage", *output_texture);
   material->updateDescriptorSets();
 
-  auto pipeline = resource_mgr.createRaytracingPipeline("test", *material, {});
+  auto pipeline = resource_mgr.createRaytracingPipeline("test", *material);
   pipeline->create(1);
 
   auto const& shader_groups = pipeline->getShaderGroups();
@@ -332,7 +332,7 @@ TEST_F(RaytracingTest, InstancingTest) {
       "Test TLAS", *accel_builder, *instances_buffer);
 
   // Pipeline
-  auto pipeline = resource_mgr.createRaytracingPipeline(kTestName, *material, {});
+  auto pipeline = resource_mgr.createRaytracingPipeline(kTestName, *material);
   pipeline->create(2);  // stack depth of 2 (raygen (primary or reflect) + shadow)
 
   // Shader binding table
@@ -589,7 +589,7 @@ TEST_F(RaytracingTest, DISABLED_AABBTest) {
   //
   // Pipeline and SBT
   //
-  auto pipeline = resource_mgr.createRaytracingPipeline(kTestName, *material, {});
+  auto pipeline = resource_mgr.createRaytracingPipeline(kTestName, *material);
   pipeline->create(2);
 
   auto sbt = resource_mgr.createShaderBindingTable(*pipeline);
@@ -868,10 +868,7 @@ TEST_F(RaytracingTest, BLASMultiMeshTest) {
   push_constants.obj_descs = obj_desc_buffer->getDeviceAddress();
   push_constants.colors = colors_buffer->getDeviceAddress();
 
-  auto pipeline = resource_mgr.createRaytracingPipeline(
-      kTestName,
-      *material,
-      {PushConstantRange{ShaderStageBits::kClosestHit, 0u, sizeof(push_constants)}});
+  auto pipeline = resource_mgr.createRaytracingPipeline(kTestName, *material);
   pipeline->create(2);
 
   auto sbt = resource_mgr.createShaderBindingTable(*pipeline);

@@ -16,14 +16,13 @@ namespace gfx {
 VulkanRaytracingPipeline::VulkanRaytracingPipeline(
     const DeviceContext& device_ctx,
     std::string_view resource_tracking_string,
-    const Material& material,
-    const PushConstantRanges& push_constant_ranges)
+    const Material& material)
     : RaytracingPipeline(device_ctx, resource_tracking_string, material)
     , pipeline_mgr_{std::make_unique<VulkanPipelineManager>(
           device_ctx,
           resource_tracking_string,
           std::vector<SpecializationMapEntry>{},
-          push_constant_ranges)}
+          material.getPushConstantRanges())}
     , pipeline_layout_{VK_NULL_HANDLE} {}
 
 VulkanRaytracingPipeline::~VulkanRaytracingPipeline() {

@@ -106,8 +106,6 @@ void ImGuiBridge_CustomBackend::init(const RenderPass& render_pass,
   pipeline_desc.setFaceCullMode(FaceCullMode::kNone);
   pipeline_desc.setBlendFunc(BlendFunc::kSrcAlpha, BlendFunc::kOneMinusSrcAlpha);
   pipeline_desc.setAlphaBlendFunc(BlendFunc::kOne, BlendFunc::kOneMinusSrcAlpha);
-  pipeline_desc.getPushConstantRanges().set(
-      {PushConstantRange{ShaderStageBits::kVertex, 0, sizeof(PushConstants)}});
 
   pipeline_ = resource_mgr.createGraphicsPipeline(
       "ImGui", *material_, pipeline_desc, primitive_assembly.get());

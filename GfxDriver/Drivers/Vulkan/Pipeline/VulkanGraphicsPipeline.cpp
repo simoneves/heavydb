@@ -305,8 +305,8 @@ void VulkanGraphicsPipeline::create(const RenderPass& render_pass) {
   pipeline_layout_ci.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   pipeline_layout_ci.setLayoutCount = 1;
   pipeline_layout_ci.pSetLayouts = &vk_descriptor_set_layout;
-  auto push_constant_ranges =
-      push_constant_ranges_to_vk_push_constant_ranges(pd.getPushConstantRanges());
+  auto push_constant_ranges = push_constant_ranges_to_vk_push_constant_ranges(
+      vk_material.getPushConstantRanges());
   pipeline_layout_ci.pushConstantRangeCount = push_constant_ranges.size();
   pipeline_layout_ci.pPushConstantRanges = push_constant_ranges.data();
 

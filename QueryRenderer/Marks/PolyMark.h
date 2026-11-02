@@ -54,7 +54,6 @@ class PolyMark : public BaseMark {
   enum Specializations { kDefaultComposite, kOverflowComposite };
 
   static const uint32_t kTileIndexPushConstantOffset{4};
-  static gfx::PushConstantRanges capture_and_comp_push_constants;
   gfx::PipelineDescriptorUqPtr pipeline_descriptors_[4];
 
   void dataRefUpdateCB(RefEventType ref_event_type, const RefObjShPtr& ref_obj) final;

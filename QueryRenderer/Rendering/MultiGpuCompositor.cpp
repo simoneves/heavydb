@@ -371,9 +371,6 @@ void MultiGpuCompositor::initPipelines() {
     CHECK(accumulator_pipeline_descriptor_);
   }
 
-  accumulator_pipeline_descriptor_->setPushConstantRanges(
-      {gfx::PushConstantRange{gfx::ShaderStageBits::kFragment, 0, sizeof(int32_t)}});
-
   //
   // pipelines
   //

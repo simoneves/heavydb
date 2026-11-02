@@ -16,13 +16,13 @@ VulkanComputePipeline::VulkanComputePipeline(
     const DeviceContext& device_ctx,
     std::string_view resource_tracking_string,
     const Material& material,
-    const std::vector<SpecializationMapEntry>& specializations,
-    const PushConstantRanges& push_constant_ranges)
+    const std::vector<SpecializationMapEntry>& specializations)
     : ComputePipeline(device_ctx, resource_tracking_string, material)
-    , pipeline_mgr_{std::make_unique<VulkanPipelineManager>(device_ctx,
-                                                            resource_tracking_string,
-                                                            specializations,
-                                                            push_constant_ranges)}
+    , pipeline_mgr_{std::make_unique<VulkanPipelineManager>(
+          device_ctx,
+          resource_tracking_string,
+          specializations,
+          material.getPushConstantRanges())}
     , pipeline_layout_{VK_NULL_HANDLE} {}
 
 VulkanComputePipeline::~VulkanComputePipeline() {

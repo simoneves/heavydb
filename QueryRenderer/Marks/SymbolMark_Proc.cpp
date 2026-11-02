@@ -653,10 +653,6 @@ void SymbolMark_Proc::buildPipelineDescriptors() {
 
   pipeline_descriptor_->setBlendEquation(is_binned_heatmap_ ? gfx::BlendEquation::kMax
                                                             : gfx::BlendEquation::kAdd);
-
-  pipeline_descriptor_->getPushConstantRanges().clear();
-  pipeline_descriptor_->getPushConstantRanges().insert(
-      gfx::ShaderStageBits::kMesh, 0, sizeof(uint32_t));
 }
 
 void SymbolMark_Proc::buildPipelines(MarkPerGpuData& per_gpu_data) {

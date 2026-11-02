@@ -769,8 +769,6 @@ void SymbolMark::buildPipelineDescriptors() {
 
   pipeline_descriptor_->setRasterSampleCount(getRasterizationSampleCount());
   pipeline_descriptor_->setEnableDepthTest(true);
-  pipeline_descriptor_->setPushConstantRanges(
-      {gfx::PushConstantRange{ShaderStageBits::kVertex, 0, sizeof(uint32_t)}});
 }
 
 void SymbolMark::buildPipelines(MarkPerGpuData& per_gpu_data) {

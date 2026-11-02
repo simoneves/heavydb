@@ -145,13 +145,11 @@ class ResourceManager {
   virtual resource_ptr<ComputePipeline> createComputePipeline(
       std::string_view resource_tracking_string,
       const Material& material,
-      const std::vector<SpecializationMapEntry>& specializations = {},
-      const PushConstantRanges& push_constant_ranges = {}) = 0;
+      const std::vector<SpecializationMapEntry>& specializations = {}) = 0;
 
   virtual resource_ptr<RaytracingPipeline> createRaytracingPipeline(
       std::string_view resource_tracking_string,
-      const Material& material,
-      const PushConstantRanges& push_constant_ranges) = 0;
+      const Material& material) = 0;
 
   virtual void destroyPipeline(resource_ptr<GraphicsPipeline> pipeline);
   virtual void destroyPipeline(resource_ptr<ComputePipeline> pipeline);
