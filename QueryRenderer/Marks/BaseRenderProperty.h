@@ -5,8 +5,13 @@
 
 #pragma once
 
+#include <algorithm>
+#include <initializer_list>
+#include <iterator>
 #include <unordered_set>
+#include <utility>
 #include <variant>
+#include <vector>
 
 #include <rapidjson/pointer.h>
 
@@ -258,8 +263,100 @@ class BaseRenderProperty {
   friend class BaseScaleRef;
 };
 
-using BaseRenderPropertyConstSet = std::unordered_set<const BaseRenderProperty*>;
-using BaseRenderPropertySet = std::unordered_set<BaseRenderProperty*>;
+// A set that iterates in the order its elements were first inserted, with
+// unordered_set's membership semantics otherwise, equality included.
+//
+// The property sets below are iterated to generate shader source: type #defines,
+// uniform block members, vertex attributes and their locations, getters. An
+// unordered_set of pointers iterates in an order that depends on the pointers' values,
+// that is on where the properties happened to be allocated, so the same material was
+// assembled into different source, and compiled to different SPIR-V, on every run,
+// which defeats the driver's shader cache. Insertion order follows the order the marks
+// build the sets in, from their property vectors, which is the same every run.
+//
+// It never dereferences its elements, so, like a set of pointers, it is safe to hold
+// a pointer to a property that has since been destroyed.
+template <typename T>
+class InsertionOrderedSet {
+ public:
+  using value_type = T;
+  using key_type = T;
+  using size_type = size_t;
+  using const_iterator = typename std::vector<T>::const_iterator;
+  using iterator = const_iterator;
+
+  InsertionOrderedSet() = default;
+  InsertionOrderedSet(std::initializer_list<T> values) {
+    insert(values.begin(), values.end());
+  }
+  template <typename InputIt>
+  InsertionOrderedSet(InputIt first, InputIt last) {
+    insert(first, last);
+  }
+
+  std::pair<iterator, bool> insert(const T& value) {
+    if (!members_.insert(value).second) {
+      return {find(value), false};
+    }
+    order_.push_back(value);
+    return {std::prev(order_.cend()), true};
+  }
+  template <typename InputIt>
+  void insert(InputIt first, InputIt last) {
+    for (; first != last; ++first) {
+      insert(*first);
+    }
+  }
+  template <typename... Args>
+  std::pair<iterator, bool> emplace(Args&&... args) {
+    return insert(T(std::forward<Args>(args)...));
+  }
+
+  size_type erase(const T& value) {
+    if (members_.erase(value) == 0) {
+      return 0;
+    }
+    order_.erase(std::find(order_.begin(), order_.end(), value));
+    return 1;
+  }
+  iterator erase(iterator position) {
+    members_.erase(*position);
+    return order_.erase(position);
+  }
+
+  iterator find(const T& value) const {
+    return members_.count(value) ? std::find(order_.cbegin(), order_.cend(), value)
+                                 : order_.cend();
+  }
+  size_type count(const T& value) const { return members_.count(value); }
+  bool contains(const T& value) const { return members_.count(value) != 0; }
+
+  iterator begin() const { return order_.cbegin(); }
+  iterator end() const { return order_.cend(); }
+  iterator cbegin() const { return order_.cbegin(); }
+  iterator cend() const { return order_.cend(); }
+  size_type size() const { return order_.size(); }
+  bool empty() const { return order_.empty(); }
+  void clear() {
+    order_.clear();
+    members_.clear();
+  }
+
+  // As for unordered_set: the same members, whatever their order
+  friend bool operator==(const InsertionOrderedSet& a, const InsertionOrderedSet& b) {
+    return a.members_ == b.members_;
+  }
+  friend bool operator!=(const InsertionOrderedSet& a, const InsertionOrderedSet& b) {
+    return !(a == b);
+  }
+
+ private:
+  std::vector<T> order_;
+  std::unordered_set<T> members_;
+};
+
+using BaseRenderPropertyConstSet = InsertionOrderedSet<const BaseRenderProperty*>;
+using BaseRenderPropertySet = InsertionOrderedSet<BaseRenderProperty*>;
 
 }  // namespace QueryRenderer
 

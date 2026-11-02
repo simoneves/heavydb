@@ -23,7 +23,9 @@ void MarkProjectionShaderPolicy::updateShader(
 
   // TODO(scb): Fragile. Properties should have explicit flags for whether or not they
   // should be transformed by projections, and which axis to use
-  for (auto const& prop : proj_props_) {
+  // By name rather than by the primary index, which is ordered by address and so
+  // differs from run to run, as would the order of the operations added to the builder
+  for (auto const& prop : proj_props_.get<PropertyName>()) {
     auto const prop_name = prop->getName();
     auto const prop_type_str =
         (prop->isDecimal() ? prop->getDecimalTypeGLSL()->declString() : "double");
