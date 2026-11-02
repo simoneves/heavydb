@@ -897,6 +897,20 @@ void PPLLRender::captureAndComposite(
                            uint32_t tile_index) {
     CHECK_NE(batch_size, 0u);
     auto base_timestamp = batch_index * kNumTimestampsPerBatch;
+
+    // The composite shader reads the tile index too. Each pipeline's layout declares
+    // only its own stages' push constants, so a value pushed for the capture pipeline
+    // does not carry over to the composite one, and a flush starts a command buffer
+    // with none at all: push it to the composite pipeline before each dispatch.
+    auto const push_composite_tile_index = [&]() {
+      if (enable_tiling_) {
+        cmd_list.setPushConstantUInt32(composite_pipeline,
+                                       "tileIndex",
+                                       gfx::ShaderStageBits::kCompute,
+                                       tile_index,
+                                       kTileIndexPushConstantOffset);
+      }
+    };
     cmd_list.writeTimestamp(
         *query_pool_, PipelineStageBits::kTopOfPipeBit, base_timestamp);
 
@@ -917,12 +931,11 @@ void PPLLRender::captureAndComposite(
                                      0u);
     }
     if (enable_tiling_) {
-      cmd_list.setPushConstantUInt32(
-          capture_pipeline,
-          "tileIndex",
-          gfx::ShaderStageBits::kFragment | gfx::ShaderStageBits::kCompute,
-          tile_index,
-          kTileIndexPushConstantOffset);
+      cmd_list.setPushConstantUInt32(capture_pipeline,
+                                     "tileIndex",
+                                     gfx::ShaderStageBits::kFragment,
+                                     tile_index,
+                                     kTileIndexPushConstantOffset);
     }
 
     // Draw polygons and capture fragments
@@ -943,6 +956,7 @@ void PPLLRender::captureAndComposite(
 
     // Composite fragments
     // TODO: replace flush with memory barrier if 2-stage disabled
+    push_composite_tile_index();
     cmd_list.pushLabel("Comp fragments 1")
         .writeTimestamp(*query_pool_,
                         PipelineStageBits::kTopOfPipeBit,
@@ -1013,6 +1027,7 @@ void PPLLRender::captureAndComposite(
         // re-run composite using new pipeline to fill in remaining deeper pixels
         // We only need a memory barrier here since we don't need to read anything
         // back unless printing stats
+        push_composite_tile_index();
         cmd_list.pushLabel("Comp fragments 2")
             .dispatchCompute(composite_pipeline,
                              kOverflowComposite,
