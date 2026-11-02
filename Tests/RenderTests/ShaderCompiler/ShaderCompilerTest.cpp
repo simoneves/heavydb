@@ -524,6 +524,11 @@ TEST_F(GeneralShaderCompilerTest, DISABLED_SubBuilderTest) {
 //
 
 TEST_F(GeneralShaderCompilerTest, ShaderRedecoratorTest) {
+  // ShaderRedecorator reading glslang's SPIR-V, with the bindings and locations
+  // glslang's resolver assigns, so glslang whatever the environment prefers. Slang
+  // materials are reflected from Slang's layout, and the Slang tests below cover that.
+  this->shaderMgr->setPreferredCompilerBackend(ShaderCompilerBackendType::kGlslang);
+
   // create and decorate
   ShaderCacheShPtrVector caches;
   // Assert rather than expect: everything below indexes into caches, so carrying on
@@ -814,6 +819,10 @@ TEST_F(GeneralShaderCompilerTest, UnlocatedVaryingTest) {
   // location. glslang assigns one from a counter, so the two stages agree only by luck
   // of declaration order and nothing downstream would notice a mismatch, the renderer
   // simply reading the wrong varying. So this has to fail the compile.
+  //
+  // The check is GlslangWrapper's, so glslang whatever the environment prefers. Slang
+  // has no equivalent yet: it locates unlocated varyings itself, per stage.
+  this->shaderMgr->setPreferredCompilerBackend(ShaderCompilerBackendType::kGlslang);
   try {
     this->shaderMgr->createCacheVectorFromTemplate(
         {{"ShaderCompilerTests/unlocatedVaryingTest.vert"},
@@ -843,16 +852,27 @@ TEST_F(GeneralShaderCompilerTest, LinkFailureInLaterStageTest) {
   // is left with no SPIR-V either, and it is the first stage the caller reports on. The
   // fragment shader's link error has to reach the caller all the same, rather than a
   // generic complaint about the vertex shader, which has nothing wrong with it.
-  try {
-    this->shaderMgr->createCacheVectorFromTemplate(
-        {{"ShaderCompilerTests/linkFailureTest.vert"},
-         {"ShaderCompilerTests/linkFailureTest.frag"}});
-    FAIL() << "Expected the fragment shader to fail to link";
-  } catch (const std::runtime_error& e) {
-    std::string const message(e.what());
-    EXPECT_NE(message.find("linkFailureTest.frag"), std::string::npos) << message;
-    EXPECT_NE(message.find("Missing entry point"), std::string::npos) << message;
-    EXPECT_EQ(message.find("Error generating Spir-V"), std::string::npos) << message;
+  //
+  // Through each compiler, which word the missing entry point differently
+  std::vector<std::pair<ShaderCompilerBackendType, std::string>> const backends({
+      {ShaderCompilerBackendType::kGlslang, "Missing entry point"},
+#ifdef HAVE_SLANG
+      {ShaderCompilerBackendType::kSlang, "no function found matching entry point"},
+#endif
+  });
+  for (auto const& [backend, expected] : backends) {
+    this->shaderMgr->setPreferredCompilerBackend(backend);
+    try {
+      this->shaderMgr->createCacheVectorFromTemplate(
+          {{"ShaderCompilerTests/linkFailureTest.vert"},
+           {"ShaderCompilerTests/linkFailureTest.frag"}});
+      FAIL() << "Expected the fragment shader to fail to link";
+    } catch (const std::runtime_error& e) {
+      std::string const message(e.what());
+      EXPECT_NE(message.find("linkFailureTest.frag"), std::string::npos) << message;
+      EXPECT_NE(message.find(expected), std::string::npos) << message;
+      EXPECT_EQ(message.find("Error generating Spir-V"), std::string::npos) << message;
+    }
   }
 }
 
@@ -1267,7 +1287,15 @@ TEST_F(GeneralShaderCompilerTest, SlangSelectionTest) {
     return this->shaderMgr->createCacheVectorFromTemplate(params);
   };
   std::string const vert = "ShaderCompilerTests/slangSelectionTest.vert";
-  std::string const frag = "ShaderCompilerTests/slangSelectionTest.frag";
+  // The fragment shader again, added to the library as not opted in, since every
+  // stage in the manifests is
+  std::string const frag = "ShaderCompilerTests/slangSelectionTestNotOptedIn.frag";
+  auto& library = this->shaderMgr->getLibrary();
+  library.add(frag,
+              "fragment",
+              "glsl",
+              library.get("ShaderCompilerTests/slangSelectionTest.frag").code,
+              false);
 
   // glslang unless Slang is asked for, whatever the manifest says. Set explicitly, since
   // the environment may already ask for Slang.

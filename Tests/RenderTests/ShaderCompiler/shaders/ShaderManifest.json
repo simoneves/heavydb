@@ -5,84 +5,96 @@
       "file_path": ".",
       "internal_path": "ShaderCompilerTests/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "shaderRedecoratorTest.frag",
       "file_path": ".",
       "internal_path": "ShaderCompilerTests/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "shaderRedecoratorClashTest.vert",
       "file_path": ".",
       "internal_path": "ShaderCompilerTests/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "shaderRedecoratorClashTest.frag",
       "file_path": ".",
       "internal_path": "ShaderCompilerTests/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "unlocatedVaryingTest.vert",
       "file_path": ".",
       "internal_path": "ShaderCompilerTests/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "unlocatedVaryingTest.frag",
       "file_path": ".",
       "internal_path": "ShaderCompilerTests/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "linkFailureTest.vert",
       "file_path": ".",
       "internal_path": "ShaderCompilerTests/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "linkFailureTest.frag",
       "file_path": ".",
       "internal_path": "ShaderCompilerTests/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "pushConstantSharedNameTest.vert",
       "file_path": ".",
       "internal_path": "ShaderCompilerTests/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "pushConstantSharedNameTest.frag",
       "file_path": ".",
       "internal_path": "ShaderCompilerTests/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "subroutineSwapTest.vert",
       "file_path": ".",
       "internal_path": "ShaderCompilerTests/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "subroutinePrototypeTest.vert",
       "file_path": ".",
       "internal_path": "ShaderCompilerTests/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "slangSelectionTest.vert",
@@ -97,7 +109,8 @@
       "file_path": ".",
       "internal_path": "ShaderCompilerTests/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     }
   ]
 }

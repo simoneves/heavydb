@@ -34,7 +34,11 @@ uniform sampler2DArray vert_array_of_sampler_arrays[2];
 // The first member carries an explicit offset so that the block's reflected range is
 // its members' span rather than its declared size, which would start at zero
 layout(push_constant) uniform VERT_PUSH_CONSTANTS {
+#ifdef __SLANG__
+  [[vk::offset(8)]] uint vert_first_item;
+#else
   layout(offset = 8) uint vert_first_item;
+#endif
   uint vert_item_count;
 } pushConstants;
 
