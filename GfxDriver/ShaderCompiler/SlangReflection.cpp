@@ -18,6 +18,7 @@
 #include <slang-com-ptr.h>
 #include <slang-deprecated.h>
 #include <slang.h>
+#include <spirv_cross/spirv_cross.hpp>
 
 #include "GfxDriver/RenderError.h"
 
@@ -588,6 +589,263 @@ std::string compare_with_spirv_reflection(const ShaderReflection& from_layout,
     }
   }
   return differences;
+}
+
+namespace {
+
+// The order of the stages that pass varyings down the graphics pipeline. A stage's
+// inputs come from the nearest stage before it that the material has. The task stage
+// is left out: it passes the mesh stage a payload, not varyings.
+int pipeline_rank(ShaderStage stage) {
+  switch (stage) {
+    case ShaderStage::kVertex:
+    case ShaderStage::kMesh:
+      return 0;
+    case ShaderStage::kTessControl:
+      return 1;
+    case ShaderStage::kTessEval:
+      return 2;
+    case ShaderStage::kGeometry:
+      return 3;
+    case ShaderStage::kFragment:
+      return 4;
+    default:
+      return -1;
+  }
+}
+
+// Whether a stage's inputs or outputs are arrays with an element per vertex, whose outer
+// dimension is the pipeline's to supply rather than part of what the stages pass
+bool is_per_vertex_array(ShaderStage stage, bool is_input) {
+  if (is_input) {
+    return stage == ShaderStage::kGeometry || stage == ShaderStage::kTessControl ||
+           stage == ShaderStage::kTessEval;
+  }
+  return stage == ShaderStage::kTessControl || stage == ShaderStage::kMesh;
+}
+
+// A scalar type's GLSL name, and the prefix GLSL gives a vector or matrix of it
+std::pair<std::string, std::string> base_type_names(const spirv_cross::SPIRType& type) {
+  using BaseType = spirv_cross::SPIRType::BaseType;
+  switch (type.basetype) {
+    case BaseType::Boolean:
+      return {"bool", "b"};
+    case BaseType::Int:
+      return {"int", "i"};
+    case BaseType::UInt:
+      return {"uint", "u"};
+    case BaseType::Int64:
+      return {"int64_t", "i64"};
+    case BaseType::UInt64:
+      return {"uint64_t", "u64"};
+    case BaseType::Half:
+      return {"float16_t", "f16"};
+    case BaseType::Float:
+      return {"float", ""};
+    case BaseType::Double:
+      return {"double", "d"};
+    default: {
+      auto const name = "type" + std::to_string(static_cast<int>(type.basetype));
+      return {name, name};
+    }
+  }
+}
+
+// A type as GLSL would write it, less `drop_outer` of its outermost array dimensions
+std::string varying_type_name(const spirv_cross::Compiler& compiler,
+                              const spirv_cross::SPIRType& type,
+                              size_t drop_outer = 0) {
+  std::string name;
+  if (type.basetype == spirv_cross::SPIRType::BaseType::Struct) {
+    name = "struct {";
+    for (size_t i = 0; i < type.member_types.size(); ++i) {
+      name += (i ? ", " : " ") +
+              varying_type_name(compiler, compiler.get_type(type.member_types[i]));
+    }
+    name += " }";
+  } else {
+    auto const [scalar, prefix] = base_type_names(type);
+    if (type.columns > 1) {
+      name = prefix + "mat" + std::to_string(type.columns) + "x" +
+             std::to_string(type.vecsize);
+    } else if (type.vecsize > 1) {
+      name = prefix + "vec" + std::to_string(type.vecsize);
+    } else {
+      name = scalar;
+    }
+  }
+  // array.back() is the outermost dimension
+  for (size_t i = type.array.size() - std::min(drop_outer, type.array.size()); i-- > 0;) {
+    name += "[" + std::to_string(type.array[i]) + "]";
+  }
+  return name;
+}
+
+// The number of locations a type takes, less `drop_outer` of its outermost dimensions
+uint32_t varying_location_count(const spirv_cross::Compiler& compiler,
+                                const spirv_cross::SPIRType& type,
+                                size_t drop_outer = 0) {
+  uint32_t count = 0;
+  if (type.basetype == spirv_cross::SPIRType::BaseType::Struct) {
+    for (auto const member : type.member_types) {
+      count += varying_location_count(compiler, compiler.get_type(member));
+    }
+  } else {
+    // A 64-bit vector of three or four components takes two locations
+    count = (type.width == 64 && type.vecsize > 2 ? 2 : 1) * std::max(type.columns, 1u);
+  }
+  for (size_t i = drop_outer; i < type.array.size(); ++i) {
+    count *= type.array[type.array.size() - 1 - i];
+  }
+  return count;
+}
+
+struct Varying {
+  std::string name;
+  std::string type_name;
+  const spirv_cross::SPIRType* type;  // A struct member's own, or the variable's
+  size_t drop_outer;
+};
+
+// One stage's varyings in one direction, by location. A block contributes each of its
+// members at the member's own location, or at the next one after the member before.
+std::map<uint32_t, Varying> stage_varyings(const spirv_cross::Compiler& compiler,
+                                           ShaderStage stage,
+                                           bool is_input,
+                                           const std::string& stage_name) {
+  auto const resources = compiler.get_shader_resources();
+  auto const& variables = is_input ? resources.stage_inputs : resources.stage_outputs;
+  size_t const drop_outer = is_per_vertex_array(stage, is_input) ? 1 : 0;
+  std::map<uint32_t, Varying> varyings;
+  auto const add = [&](uint32_t location,
+                       std::string name,
+                       const spirv_cross::SPIRType& type,
+                       size_t drop) {
+    // Slang names an entry point's varyings entryPointParam_<entry>.<name>, a prefix
+    // that is no help to anyone reading the source
+    if (name.rfind("entryPointParam_", 0) == 0 && name.find('.') != std::string::npos) {
+      name.erase(0, name.find('.') + 1);
+    }
+    auto const [itr, inserted] = varyings.try_emplace(
+        location, Varying{name, varying_type_name(compiler, type, drop), &type, drop});
+    RUNTIME_EX_ASSERT(inserted,
+                      "Shader \"" + stage_name + "\" has two " +
+                          (is_input ? "inputs" : "outputs") + " at location " +
+                          std::to_string(location) + ", '" + itr->second.name +
+                          "' and '" + name + "'");
+  };
+
+  for (auto const& variable : variables) {
+    auto const& type = compiler.get_type(variable.type_id);
+    bool const has_location =
+        compiler.has_decoration(variable.id, spv::DecorationLocation);
+    if (type.basetype != spirv_cross::SPIRType::BaseType::Struct ||
+        !compiler.has_decoration(type.self, spv::DecorationBlock)) {
+      RUNTIME_EX_ASSERT(has_location,
+                        "Shader \"" + stage_name + "\" has " +
+                            (is_input ? "input" : "output") + " '" + variable.name +
+                            "' without a location");
+      add(compiler.get_decoration(variable.id, spv::DecorationLocation),
+          variable.name,
+          type,
+          drop_outer);
+      continue;
+    }
+    // A block, perhaps per vertex. Its members are reported without that dimension,
+    // which the block's array carries rather than they.
+    uint32_t next =
+        has_location ? compiler.get_decoration(variable.id, spv::DecorationLocation) : 0;
+    for (uint32_t i = 0; i < type.member_types.size(); ++i) {
+      auto const& member_type = compiler.get_type(type.member_types[i]);
+      if (compiler.has_member_decoration(type.self, i, spv::DecorationLocation)) {
+        next = compiler.get_member_decoration(type.self, i, spv::DecorationLocation);
+      } else {
+        RUNTIME_EX_ASSERT(has_location,
+                          "Shader \"" + stage_name + "\" has block '" + variable.name +
+                              "' whose member " + std::to_string(i) + " has no location");
+      }
+      add(next,
+          variable.name + "." + compiler.get_member_name(type.self, i),
+          member_type,
+          0);
+      next += varying_location_count(compiler, member_type);
+    }
+  }
+  return varyings;
+}
+
+// An output may have more vector components than the input it feeds, which ignores the
+// rest. Anything else must be the same type.
+bool varying_types_match(const Varying& output, const Varying& input) {
+  if (output.type_name == input.type_name) {
+    return true;
+  }
+  auto const& out_type = *output.type;
+  auto const& in_type = *input.type;
+  return out_type.basetype != spirv_cross::SPIRType::BaseType::Struct &&
+         out_type.basetype == in_type.basetype && out_type.width == in_type.width &&
+         out_type.columns == 1 && in_type.columns == 1 &&
+         out_type.array.size() == output.drop_outer &&
+         in_type.array.size() == input.drop_outer && out_type.vecsize > in_type.vecsize;
+}
+
+}  // namespace
+
+std::string check_varying_interfaces(
+    const std::vector<ShaderCompilerBackend::StageSource>& stages,
+    const std::vector<ShaderCompilerBackend::CompileResult>& compiled) {
+  CHECK_EQ(compiled.size(), stages.size());
+  std::vector<size_t> order;
+  for (size_t i = 0; i < stages.size(); ++i) {
+    if (pipeline_rank(stages[i].shader_stage) >= 0) {
+      order.push_back(i);
+    }
+  }
+  std::stable_sort(order.begin(), order.end(), [&stages](size_t a, size_t b) {
+    return pipeline_rank(stages[a].shader_stage) < pipeline_rank(stages[b].shader_stage);
+  });
+
+  std::string errors;
+  auto const describe = [](uint32_t location, const Varying& varying) {
+    return varying.type_name + " '" + varying.name + "' at location " +
+           std::to_string(location);
+  };
+  for (size_t k = 1; k < order.size(); ++k) {
+    auto const& producer = stages[order[k - 1]];
+    auto const& consumer = stages[order[k]];
+    RUNTIME_EX_ASSERT(
+        pipeline_rank(producer.shader_stage) < pipeline_rank(consumer.shader_stage),
+        "Shaders \"" + producer.pretty_name + "\" and \"" + consumer.pretty_name +
+            "\" are the same pipeline stage");
+    spirv_cross::Compiler producer_compiler(compiled[order[k - 1]].first);
+    spirv_cross::Compiler consumer_compiler(compiled[order[k]].first);
+    auto const outputs = stage_varyings(
+        producer_compiler, producer.shader_stage, false, producer.pretty_name);
+    auto const inputs = stage_varyings(
+        consumer_compiler, consumer.shader_stage, true, consumer.pretty_name);
+    std::string pair_errors;
+    for (auto const& [location, input] : inputs) {
+      auto const output = outputs.find(location);
+      if (output == outputs.end()) {
+        pair_errors += "  \"" + consumer.pretty_name + "\" reads " +
+                       describe(location, input) + ", which \"" + producer.pretty_name +
+                       "\" does not write\n";
+      } else if (!varying_types_match(output->second, input)) {
+        pair_errors += "  \"" + consumer.pretty_name + "\" reads " +
+                       describe(location, input) + ", where \"" + producer.pretty_name +
+                       "\" writes " + describe(location, output->second) + "\n";
+      }
+    }
+    if (!pair_errors.empty()) {
+      // Everything the earlier stage writes, since the locations a mismatch is reported
+      // at are the compiler's choice rather than anything in the source
+      errors += pair_errors + "  \"" + producer.pretty_name + "\" writes:\n";
+      for (auto const& [location, output] : outputs) {
+        errors += "    " + describe(location, output) + "\n";
+      }
+    }
+  }
+  return errors;
 }
 
 }  // namespace gfx

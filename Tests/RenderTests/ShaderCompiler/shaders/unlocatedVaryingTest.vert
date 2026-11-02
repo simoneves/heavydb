@@ -12,13 +12,16 @@ in vec3 in_position;
 
 layout(location = 0) out float out_depth;
 
-// Deliberately without a location, which is what this test is for. glslang cannot match
-// it to the fragment shader's in_colour, so the compile has to fail rather than assign
-// one and hope.
+// Deliberately without locations, which is what this test is for, and declared in the
+// opposite order to the fragment shader's inputs. Each compiler would assign them by
+// declaration order, so the two stages would disagree without a word; the compile has
+// to fail rather than assign them and hope.
 out vec3 out_colour;
+out float out_alpha;
 
 void main() {
   gl_Position = viewTM * vec4(in_position, 1.0);
   out_depth = in_position.z;
   out_colour = in_position * 0.5 + 0.5;
+  out_alpha = 0.5;
 }

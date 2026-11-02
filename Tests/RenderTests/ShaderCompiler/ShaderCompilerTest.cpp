@@ -855,34 +855,52 @@ TEST_F(GeneralShaderCompilerTest, CreateCacheTest) {
 }
 
 TEST_F(GeneralShaderCompilerTest, UnlocatedVaryingTest) {
-  // Compile a pair of shaders whose out_colour and in_colour have no explicit
-  // location. glslang assigns one from a counter, so the two stages agree only by luck
-  // of declaration order and nothing downstream would notice a mismatch, the renderer
-  // simply reading the wrong varying. So this has to fail the compile.
+  // Compile a pair of shaders whose varyings have no explicit location and are declared
+  // in a different order in each stage. Both compilers assign a location from a counter,
+  // so the two stages agree only by luck of declaration order and nothing downstream
+  // would notice a mismatch, the renderer simply reading the wrong varying. So this has
+  // to fail the compile, through either compiler.
   //
-  // The check is GlslangWrapper's, so glslang whatever the build compiles with. Slang
-  // has no equivalent yet: it locates unlocated varyings itself, per stage.
-  this->shaderMgr->setCompilerBackend(ShaderCompilerBackendType::kGlslang);
-  try {
-    this->shaderMgr->createCacheVectorFromTemplate(
-        {{"ShaderCompilerTests/unlocatedVaryingTest.vert"},
-         {"ShaderCompilerTests/unlocatedVaryingTest.frag"}});
-    FAIL() << "Expected the unlocated varying to throw";
-  } catch (const std::runtime_error& e) {
-    // The message has to name the varying, since that is the whole of the fix
-    std::string const message(e.what());
-    EXPECT_NE(message.find("without an explicit location"), std::string::npos) << message;
-    EXPECT_NE(message.find("out_colour"), std::string::npos) << message;
+  // glslang rejects a varying with no explicit location outright. Slang cannot tell an
+  // explicit location from one it assigned, so it is checked by matching each stage's
+  // inputs against the outputs of the stage before. Where Slang puts each varying is
+  // its own business, so only the names are asserted.
+  struct Expectation {
+    ShaderCompilerBackendType backend;
+    std::vector<std::string> named;
+  };
+  std::vector<Expectation> const expectations({
+      {ShaderCompilerBackendType::kGlslang,
+       {"without an explicit location", "out_colour"}},
+#ifdef HAVE_SLANG
+      {ShaderCompilerBackendType::kSlang,
+       {"disagree about their varyings", "in_colour", "out_alpha"}},
+#endif
+  });
+  for (auto const& [backend, named] : expectations) {
+    this->shaderMgr->setCompilerBackend(backend);
+    try {
+      this->shaderMgr->createCacheVectorFromTemplate(
+          {{"ShaderCompilerTests/unlocatedVaryingTest.vert"},
+           {"ShaderCompilerTests/unlocatedVaryingTest.frag"}});
+      FAIL() << "Expected the unlocated varyings to throw";
+    } catch (const std::runtime_error& e) {
+      // The message has to name the varying, since that is the whole of the fix
+      std::string const message(e.what());
+      for (auto const& expected : named) {
+        EXPECT_NE(message.find(expected), std::string::npos) << message;
+      }
 
-    // Both shaders also leave a location off in_position and color, which are exempt:
-    // a vertex input and a fragment output are matched against the reflection rather
-    // than against another stage. Reporting either would be a false positive, and the
-    // vertex case would reject most of the shader library.
-    EXPECT_EQ(message.find("in_position"), std::string::npos) << message;
+      // Both shaders also leave a location off in_position and color, which are exempt:
+      // a vertex input and a fragment output are matched against the reflection rather
+      // than against another stage. Reporting either would be a false positive, and the
+      // vertex case would reject most of the shader library.
+      EXPECT_EQ(message.find("in_position"), std::string::npos) << message;
 
-    // The implicit output block of every vertex shader. Its members are built-in and
-    // declare no locations, so reporting it would reject every vertex shader there is.
-    EXPECT_EQ(message.find("gl_PerVertex"), std::string::npos) << message;
+      // The implicit output block of every vertex shader. Its members are built-in and
+      // declare no locations, so reporting it would reject every vertex shader there is.
+      EXPECT_EQ(message.find("gl_PerVertex"), std::string::npos) << message;
+    }
   }
 }
 

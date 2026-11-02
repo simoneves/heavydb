@@ -50,6 +50,18 @@ std::vector<ShaderReflection> reflect_slang_material(
 std::string compare_with_spirv_reflection(const ShaderReflection& from_layout,
                                           const ShaderReflection& from_spirv);
 
+// Checks that every varying a stage reads is written by the stage before it, at the same
+// location and with the same type, and describes each that is not, or returns an empty
+// string. Slang compiles each stage on its own and locates any varying without an
+// explicit location by declaration order, so two stages that declare theirs in a
+// different order would otherwise disagree without a word, the renderer simply reading
+// the wrong varying. Built-ins are left out, and so is the per-vertex array of a
+// geometry or tessellation input and of a mesh output. Stages that pass no varyings,
+// compute, ray tracing and task, are not checked.
+std::string check_varying_interfaces(
+    const std::vector<ShaderCompilerBackend::StageSource>& stages,
+    const std::vector<ShaderCompilerBackend::CompileResult>& compiled);
+
 }  // namespace gfx
 
 #endif  // HAVE_SLANG

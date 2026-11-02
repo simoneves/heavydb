@@ -9,12 +9,13 @@ layout(std430, binding = 0) uniform SHARED_UBO {
 
 layout(location = 0) in float in_depth;
 
-// The other half of the pair the vertex shader cannot be matched to
+// The other half of the pair the vertex shader cannot be matched to, in the other order
+in float in_alpha;
 in vec3 in_colour;
 
 // A fragment output needs no location of its own: it is matched against the reflection
 out vec4 color;
 
 void main() {
-  color = vec4(in_colour * in_depth, 1.0);
+  color = vec4(in_colour * in_depth, in_alpha);
 }

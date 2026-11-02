@@ -325,7 +325,9 @@ ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
   // its SPIR-V the way glslang's is, and everything found there has to appear in the
   // layout's reflection identically. The layout of a storage block is computed apart
   // from the one Slang emitted, so this is what guarantees the two never disagree
-  // about a resource the shader actually uses. Any failure fails the whole material.
+  // about a resource the shader actually uses. Before that, the stages' varyings are
+  // matched against each other, which Slang does not do. Any failure fails the whole
+  // material.
   auto const fail_material = [&results, &stages](std::string error) {
     for (auto& stage : results.stages) {
       stage.first.clear();
@@ -334,6 +336,14 @@ ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
     results.stages[0].second = std::move(error);
   };
   try {
+    auto const varying_errors = check_varying_interfaces(stages, results.stages);
+    if (!varying_errors.empty()) {
+      fail_material("The stages of shader \"" + stages.front().pretty_name +
+                    "\" disagree about their varyings. Give each an explicit "
+                    "layout(location = N), the same in both stages:\n" +
+                    varying_errors);
+      return results;
+    }
     std::vector<ShaderReflection> from_spirv(stages.size());
     for (size_t i = 0; i < stages.size(); ++i) {
       ShaderRedecorator redecorator(stages[i].pretty_name);
