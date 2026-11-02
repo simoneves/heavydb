@@ -5,6 +5,7 @@
 
 #include "GfxDriver/ShaderCompiler/SlangBackend.h"
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cstring>
@@ -164,7 +165,73 @@ SlangBackend::SlangBackend(const Library& library)
 
 SlangBackend::~SlangBackend() = default;
 
+namespace {
+
+// Everything that decides a material's compiled output, as one string. Each part is
+// length-prefixed, so that no two different materials can make the same key.
+std::string material_key(const std::vector<ShaderCompilerBackend::StageSource>& stages) {
+  std::string key;
+  auto const append = [&key](std::string_view part) {
+    key += std::to_string(part.size());
+    key += ':';
+    key += part;
+  };
+  for (auto const& stage : stages) {
+    append(std::to_string(static_cast<int>(stage.shader_stage)));
+    append(stage.entry_point);
+    append(stage.pretty_name);
+    append(stage.source);
+  }
+  return key;
+}
+
+}  // namespace
+
 ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
+    const std::vector<StageSource>& stages) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  auto key = material_key(stages);
+  if (auto const cached = cache_.find(key); cached != cache_.end()) {
+    ++cache_hits_;
+    cache_use_.splice(cache_use_.begin(), cache_use_, cached->second.use);
+    VLOG(1) << "Reused the compiled material starting with \""
+            << stages.front().pretty_name << "\"";
+    return cached->second.results;
+  }
+
+  auto results = compileUncached(stages);
+
+  // Only a material that compiled: a failure is compiled again, and reported again
+  bool const compiled =
+      results.material_error.empty() &&
+      std::all_of(results.stages.begin(), results.stages.end(), [](auto const& stage) {
+        return !stage.first.empty();
+      });
+  if (compiled) {
+    if (cache_.size() >= kMaxCachedMaterials) {
+      cache_.erase(*cache_use_.back());
+      cache_use_.pop_back();
+    }
+    auto const [entry, inserted] =
+        cache_.emplace(std::move(key), CacheEntry{results, cache_use_.end()});
+    CHECK(inserted);
+    cache_use_.push_front(&entry->first);
+    entry->second.use = cache_use_.begin();
+  }
+  return results;
+}
+
+size_t SlangBackend::cacheHits() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return cache_hits_;
+}
+
+size_t SlangBackend::cachedMaterials() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return cache_.size();
+}
+
+ShaderCompilerBackend::CompileResults SlangBackend::compileUncached(
     const std::vector<StageSource>& stages) {
   CompileResults results;
   results.stages.resize(stages.size());
@@ -178,8 +245,6 @@ ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
     results.material_error += error_string;
     results.stages[stage_index].second = std::move(error_string);
   };
-
-  std::lock_guard<std::mutex> lock(mutex_);
 
   // Settings established by PR 0b's spike. Slang names matrix layouts the other way
   // round from GLSL, so its row-major is GLSL's column-major memory layout; with
