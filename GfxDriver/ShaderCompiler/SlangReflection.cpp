@@ -371,8 +371,11 @@ void reflect_parameter(VariableLayoutReflection* param,
       if ((shape & SLANG_RESOURCE_BASE_SHAPE_MASK) == SLANG_ACCELERATION_STRUCTURE) {
         claims.claim(binding, ResourceKind::kAccelerationStructure, name);
         reflection.addAccelerationStructure(name, kDescriptorSet, binding, count);
-      } else if (resource->getResourceAccess() == SLANG_RESOURCE_ACCESS_READ_WRITE) {
-        // A storage image, readonly or not: Slang reports both as read-write
+      } else if (resource->getResourceAccess() == SLANG_RESOURCE_ACCESS_READ_WRITE ||
+                 resource->getResourceAccess() == SLANG_RESOURCE_ACCESS_RASTER_ORDERED) {
+        // A storage image, readonly or not: Slang reports both as read-write. A
+        // rasterizer-ordered one, Slang's form of an image under a pixel interlock, is
+        // a storage image too.
         claims.claim(binding, ResourceKind::kStorageImage, name);
         reflection.addStorageImage(name, kDescriptorSet, binding, count);
       } else {
