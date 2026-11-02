@@ -1188,10 +1188,12 @@ TEST_F(GeneralShaderCompilerTest, SlangLayoutReflectionTest) {
   // The backend reflects Slang materials from the program layout rather than from the
   // SPIR-V, so resources the entry point never reads are still reflected, with the
   // bindings Slang reserved for them, and the result matches glslang's. The SPIR-V
-  // itself still leaves them out; SlangUnusedResourcesTest pins that.
+  // itself still leaves them out; SlangUnusedResourcesTest pins that. The layout has
+  // specialization constants too, which neither reflects.
   std::string const source = R"glsl(#version 460
 #extension GL_EXT_scalar_block_layout : require
 layout(location = 0) out vec4 color;
+layout(constant_id = 0) const uint UNUSED_SPEC_CONSTANT = 1;
 layout(std430, binding = 0) uniform UNUSED_UBO {
   vec4 unused_value;
 };

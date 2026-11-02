@@ -312,6 +312,12 @@ void reflect_parameter(VariableLayoutReflection* param,
     return;
   }
 
+  // A specialization constant (layout(constant_id)) is set at pipeline creation by its
+  // id, which the caller knows. ShaderRedecorator does not reflect one either.
+  if (category == ParameterCategory::SpecializationConstant) {
+    return;
+  }
+
   RUNTIME_EX_ASSERT(category == ParameterCategory::DescriptorTableSlot,
                     "Unsupported Slang parameter category " +
                         std::to_string(static_cast<int>(category)) + " for '" + name +
