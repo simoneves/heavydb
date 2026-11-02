@@ -9,11 +9,11 @@ todos:
     content: "Build ShaderReflection from Slang's program layout for Slang-compiled materials, instead of from the SPIR-V. Open design point: the layout covers the whole material, ShaderReflection is per stage, so each stage's declared parameters have to be attributed to it (likely from its own translation unit) while bindings come from the combined program. Reproduce the redecorator's conventions: names, struct flattening, array dimensions, push constant spans, the type whitelist, the clash check Done 2026-11-01 in \"Reflect Slang materials from Slang's program layout\": stages attributed through each translation unit's module; storage block members laid out from the generic's element type, since Slang gives a GLSL buffer no element layout; array sizes taken as length times stride, Slang's own omitting the trailing padding; and every stage cross-checked against reflection of its own SPIR-V, failing the material on any disagreement. accumulatorScale_2ndPass.frag then opted in and passed be-render-tests."
     status: completed
   - id: mechanical-changes
-    content: "Glslang-neutral source changes: block-level interface locations in GlslStructBuilder (all 17 Mark stages), padding instead of layout(offset) in PolyMark's split push constant block, and a memory-model review of the two coherent image atomics. Each landed with glslang's SPIR-V shown unchanged or equivalent"
-    status: pending
+    content: "Glslang-neutral source changes: block-level interface locations in GlslStructBuilder (all 17 Mark stages), padding instead of layout(offset) in PolyMark's split push constant block, and a memory-model review of the two coherent image atomics. Each landed with glslang's SPIR-V shown unchanged or equivalent Done 2026-11-01. Block-level locations where every member takes one location (all Mark blocks); push constant offsets as [[vk::offset(N)]] behind #ifdef __SLANG__ rather than padding, since padding would move the block range Vulkan checks; coherent dropped from two images where it changes nothing. Two more Slang gaps turned up: gl_SampleMaskIn (now an SV_Coverage parameter under __SLANG__) and coherent rejected by every image function, not only atomics."
+    status: completed
   - id: explicit-binding-audit
-    content: "Audit every multi-stage material for a resource shared between stages without an explicit binding, and give each one an explicit binding. Glslang-neutral"
-    status: pending
+    content: "Audit every multi-stage material for a resource shared between stages without an explicit binding, and give each one an explicit binding. Glslang-neutral Done 2026-11-01: no resource shared within a material without an explicit binding among the shaders be-render-tests assembles. Enforced rather than trusted: the layout reflection now refuses a material where one does."
+    status: completed
   - id: slang-syntax-spike
     content: "Done 2026-11-01: yes. Slang syntax for buffer device addresses, geometry entry points and mesh entry points compiles inside a GLSL translation unit through the existing compile request; Slang defines __SLANG__ there, so one template can carry both forms and still compile with glslang; and a Slang-syntax geometry stage links by location with GLSL vertex and fragment stages in one material. Local edits, not a conversion to Slang modules"
     status: completed
@@ -105,6 +105,17 @@ Whatever is chosen, find out first why a missing block made the accumulation out
 Sixteen production stages are now opted in, `accumulatorScale_2ndPass.frag` among them, and be-render-tests against a Slang server gives 441 passing, as glslang does.
 
 ## 2. Mechanical, glslang-neutral changes
+
+**Done (2026-11-01).** Each verified with be-render-tests on glslang unchanged at 441 passing, and the affected shaders recaptured and compiled through Slang.
+- **Interface block locations:** `GlslStructBuilder` emits one `layout (location = 0)` on a block whose members each take one location, which every Mark block does, and a location per member otherwise. Every Mark fragment template the suite reaches now compiles through Slang.
+- **Push constant offsets:** not padding after all. A padding member at offset 0 moves the block's declared range, which Vulkan requires the pipeline's range for that stage to cover, so the fragment range would have to overlap the vertex one and every vertex push would need the fragment stage flag. Slang accepts `[[vk::offset(N)]]` on the member instead, so the two PolyMark shaders carry both forms behind `#ifdef __SLANG__` and glslang compiles exactly what it did.
+- **Coherent:** Slang rejects any image function on a coherent image, `imageLoad` and `imageStore` included, not just atomics. `accumulationCompositePeer.frag` only uses atomics, which are coherent anyway; `ppllPolyTemplate_composite.comp` never used an atomic (its earlier listing came from a static pattern, not a Slang error) but reads and writes only its own pixel. Both dropped the qualifier.
+- **New: `gl_SampleMaskIn`** is not in Slang's GLSL support at all. PolyMark's capture shader takes it as an `SV_Coverage` parameter of `main` under `__SLANG__`, the same `SampleMask` built-in.
+- **Explicit bindings:** no resource is shared within a material without one, among the shaders the suite assembles. The layout reflection now refuses any material that does it, naming the resource.
+
+With these, the only Mark stages that still fail through Slang are those using buffer device addresses or geometry or mesh I/O, which is section 3.
+
+### Original analysis
 
 Each verified the way the earlier shader fixes were: glslang's SPIR-V unchanged or equivalent, the render suite, and be-render-tests.
 
