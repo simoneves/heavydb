@@ -217,6 +217,19 @@ class BindingClaims {
       : material_name_(std::move(material_name)) {}
 
   void claim(int binding, ResourceKind kind, const std::string& name) {
+    // A resource declared in more than one stage gets one binding from glslang, which
+    // matches it by name, but a binding per stage from Slang, which sees a separate
+    // parameter in each, unless it declares its binding explicitly
+    auto const [named, first_time] = bindings_by_name_.try_emplace({kind, name}, binding);
+    if (!first_time && named->second != binding) {
+      THROW_RUNTIME_EX(resource_kind_to_string(kind) + " '" + name +
+                       "' is declared in more than one stage of '" + material_name_ +
+                       "' without an explicit binding, so Slang gives each stage a "
+                       "binding of its own (" +
+                       std::to_string(named->second) + " and " + std::to_string(binding) +
+                       "). Declare it with layout(binding = N).");
+    }
+
     auto const entry = std::make_tuple(kind, name);
     auto const [itr, inserted] = claims_.try_emplace(binding, entry);
     if (!inserted && itr->second != entry) {
@@ -233,6 +246,7 @@ class BindingClaims {
  private:
   std::string material_name_;
   std::map<int, std::tuple<ResourceKind, std::string>> claims_;
+  std::map<std::tuple<ResourceKind, std::string>, int> bindings_by_name_;
 };
 
 void reflect_parameter(VariableLayoutReflection* param,

@@ -1347,9 +1347,10 @@ void main() {
     EXPECT_EQ(reflect_material(glslang, vert, frag), reflect_material(slang, vert, frag));
   }
 
-  // Pinned as a difference: a resource shared without an explicit binding gets one
-  // binding from glslang, which matches it by name, and a binding per stage from Slang,
-  // which sees two parameters. Shaders that do this cannot opt in to Slang.
+  // A resource shared without an explicit binding gets one binding from glslang, which
+  // matches it by name, and a binding per stage from Slang, which sees two parameters.
+  // The SPIR-V shows it, and the backend refuses the material rather than reflect one
+  // resource at two bindings.
   {
     auto const vert = header + R"glsl(layout(std430) uniform SHARED_UBO {
   vec4 s;
@@ -1367,13 +1368,24 @@ void main() {
 }
 )glsl";
     auto const from_glslang = reflect_material(glslang, vert, frag);
-    auto const from_slang = reflect_material(slang, vert, frag);
     ASSERT_EQ(from_glslang.size(), size_t(2));
-    ASSERT_EQ(from_slang.size(), size_t(2));
     EXPECT_NE(from_glslang[1].find("\"SHARED_UBO\" set=0 binding=0"), std::string::npos)
         << from_glslang[1];
-    EXPECT_NE(from_slang[1].find("\"SHARED_UBO\" set=0 binding=1"), std::string::npos)
-        << from_slang[1];
+
+    auto const results = slang.compileMaterial(
+        {ShaderCompilerBackend::StageSource{
+             "bindingTest.vert", vert, "main", ShaderStage::kVertex},
+         ShaderCompilerBackend::StageSource{
+             "bindingTest.frag", frag, "main", ShaderStage::kFragment}});
+    EXPECT_TRUE(results.stages[0].first.empty());
+    EXPECT_TRUE(results.stages[1].first.empty());
+    EXPECT_NE(
+        results.material_error.find("'SHARED_UBO' is declared in more than one stage"),
+        std::string::npos)
+        << results.material_error;
+    EXPECT_NE(results.material_error.find("without an explicit binding"),
+              std::string::npos)
+        << results.material_error;
   }
 }
 
