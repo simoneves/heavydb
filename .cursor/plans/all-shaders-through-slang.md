@@ -47,7 +47,55 @@ Builds on [pr6-shader-compiler-backend.md](pr6-shader-compiler-backend.md) and t
 
 "Compile with Slang" here means through PR 6's backend, opted in per stage and proven equivalent to glslang. It is not the same as deleting glslang, which is PR 7, nor as rewriting the library in Slang's own idioms, which is PR 8; but the Marks cannot get there without some of PR 8.
 
-## Where things stand
+## Done: every shader through Slang (2026-11-02)
+
+All 147 stages in every manifest are opted in, production and test alike. With Slang preferred no material is compiled by glslang. Both compilers pass the render suite (every binary), and be-render-tests gives 441 passing on both servers, the two failures being the suite's own. Materials no test reaches are proven by `SlangUnreachedMaterialsTest`, which builds them through each compiler and requires identical reflection and execution modes: the peer accumulation and multi-GPU ID composites, the table function test, and the windowed tests' shaders. The wind barb, which nothing renders, was rendered once by hand on each server: the images are byte-identical. The rest of this document is the record of how it got here.
+
+**How the features Slang's GLSL mode lacks were bridged**, keeping one source for both compilers behind `#ifdef __SLANG__`, with function bodies unchanged:
+- **Geometry shaders:** `Slang/slangGeometry.glsl`. A Slang entry point takes the input primitive and a `TriangleStream`. The include mirrors the inputs and outputs as the globals the GLSL body uses, `gl_in` included, and defines `EmitVertex` and `EndPrimitive` on the stream. Only the stream is threaded through the functions that emit (`SLANG_GEOMETRY_STREAM`, empty for glslang).
+- **Mesh and task shaders:** `Slang/slangMesh.glsl` maps `gl_MeshVerticesEXT`, the primitive index arrays, `SetMeshOutputsEXT` and `EmitMeshTasksEXT` onto Slang's output parameters, `SetMeshOutputCounts` and `DispatchMesh`. Every mesh shader here writes its outputs in `main`, which this relies on.
+- **Interface blocks for those stages:** `GlslStructBuilder::createSlangStructString` writes the Slang struct, with the same locations, `SV_Position` and optionally `SV_PointSize`, and an X-macro listing the members. The Marks fill new `<...Slang>` tags with it.
+- **Buffer device addresses:** the slab table's `SLAB_LOAD`, and elsewhere a struct holding a pointer with an `__init` from the address, so `Type(address).member[i]` is unchanged.
+- **Ray tracing:** `traceRayEXT` hits an internal error in Slang. `rtTraceRay.glsl` defines it through `TraceRay` with the payload variable, which Slang copies in and out.
+- **Pixel interlock:** a `globallycoherent RasterizerOrderedTexture2D`. Without `globallycoherent` it renders wrong.
+- **Multisampled fetch:** `SeparateMultiSample` uses the texture's `Load`, which keeps the sample index that `texelFetch` drops.
+
+**Fixed in the backend and reflection on the way:**
+- **Buffer block layout:** Slang's reflection API lays out a GLSL buffer block's element type with scalar alignment, whatever the block declares. So a block's size and members now come from the SPIR-V whenever the entry point uses it. A block it never touches is still laid out by the API, and could be wrong where std430 and scalar alignment differ; nothing binds such a block by member today.
+- **Push constants:** member offsets come from the SPIR-V, since the layout ignores `[[vk::offset]]`.
+- **Specialization constants** are skipped in the layout reflection.
+- **Names and types:** the `_natural` name suffix of scalar storage blocks is stripped. A rasterizer-ordered texture is reflected as a storage image.
+- **Array inside a struct member:** an `int pad[3]` in a struct member is accepted.
+- **Includes:** angle-bracket includes are resolved.
+- **Diagnostics:** a layout and SPIR-V disagreement now shows both sides.
+
+**Shader fixes that glslang compiles identically:**
+- `imageSize` renamed to `viewportSize`, since it is a built-in function.
+- `coherent` dropped where an image is only used atomically.
+- Explicit locations on unlocated vertex inputs where reflection parity needed them: Slang numbers them from 1.
+- `.st` swizzles replaced with `.xy`.
+- `float(uvec3)` replaced with the component itself.
+- A mesh output composed before it is written, since Slang cannot read one back.
+- The ray tracing acceleration structure bound explicitly, since Slang matches shared resources only by binding.
+
+**Test fixtures that test glslang itself** (the redecorator, the unlocated-varying check) now set the compiler they test, rather than relying on not being opted in. The link failure test runs through both compilers.
+
+**Left to do:**
+- **Remove the opt-in flags.** The user's chosen separate step, now that everything is proven: drop `"slang"` from the manifests and `slang_ready`, so Slang preferred means Slang for everything.
+- **Compile time** (section 6): untouched by request. Every Mark now pays Slang's cost, so the compiled-material cache is the obvious next step.
+- **Upstream Slang reports**, now with these reproducers:
+  - `traceRayEXT` internal error;
+  - `texelFetch` multisample index;
+  - module API `local_size`;
+  - `PreserveParameters`;
+  - scalar layout of GLSL buffer blocks in reflection;
+  - mesh output read-back;
+  - inheritance internal error.
+- **Saved Manual builders** for the line and fastSymbol templates predate the `<...Slang>` tags. They are compiled through glslang only (the Legacy cases), and would need recapturing to go through Slang.
+- **A new manifest entry needs CMake re-run**: the generated shader sources are listed at configure time. Making the manifests configure dependencies would fix that.
+- **Unrelated bug found:** a wind barb Vega that omits `quantizeDirection` fails, because the property is declared `INT` but defaults to `true`.
+
+## Where things stand (before 2026-11-02)
 
 Of 56 production stages, 15 are opted in: the nine single-stage compute shaders (`ppllDebugVisualizer`, `ppllStats`, `ppllStatsTiled`, `ppllStatsTiledBatches_Stage1/2`, `accumulatorTx_findExtents`, `accumulatorTx_findStdDev`, `clearQueryOutputBuffer`, `MSMultiGpuComposite`) and six post-processing stages (`SMAAPassThru.vert`, the three SMAA passes, `fullScreenTriangle.vert`, `accumulatorIDPass.frag`). PR 6's own write-up says fourteen; that is the number be-render-tests sent through Slang, `MSMultiGpuComposite` being proven by its golden instead.
 
