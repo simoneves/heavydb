@@ -374,6 +374,26 @@ void reflect_parameter(VariableLayoutReflection* param,
   }
 }
 
+// One of the GLSL module's own built-in variables. Slang lists them in the program
+// layout, as though the shader had declared them, when its GLSL module was compiled
+// from source rather than loaded precompiled, which is how the backend gets it. They
+// are all varyings and all carry names GLSL reserves, gl_, or _gl_, __gl_ and __sv_ for
+// Slang's own.
+bool is_glsl_builtin(VariableLayoutReflection* param) {
+  auto const category = param->getCategory();
+  if (category != ParameterCategory::VaryingInput &&
+      category != ParameterCategory::VaryingOutput) {
+    return false;
+  }
+  std::string_view const name = param->getName();
+  for (std::string_view prefix : {"gl_", "_gl_", "__gl_", "__sv_"}) {
+    if (name.substr(0, prefix.size()) == prefix) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // A reflection's serialized items, grouped by the section they belong to
 std::map<std::string, std::set<std::string>> serialized_items(
     const ShaderReflection& reflection) {
@@ -407,7 +427,8 @@ std::vector<ShaderReflection> reflect_slang_material(
   }
   BindingClaims claims(material_name);
 
-  // The program layout lists each translation unit's parameters in turn, and each unit
+  // The program layout lists each translation unit's parameters in turn, among the GLSL
+  // module's built-ins, which are skipped, and each unit
   // was given one stage, so its own module layout says how many of them are its own.
   // The module layout's bindings are its own, not the program's, so only its names and
   // order are used, to check the attribution.
@@ -426,6 +447,10 @@ std::vector<ShaderReflection> reflect_slang_material(
 
     reflections[i].initialize();
     for (unsigned j = 0; j < module_layout->getParameterCount(); ++j, ++next) {
+      while (next < program->getParameterCount() &&
+             is_glsl_builtin(program->getParameterByIndex(next))) {
+        ++next;
+      }
       RUNTIME_EX_ASSERT(next < program->getParameterCount(),
                         "Slang's program layout has fewer parameters than its modules");
       auto* param = program->getParameterByIndex(next);
@@ -436,6 +461,10 @@ std::vector<ShaderReflection> reflect_slang_material(
                             "\" declares '" + expected + "'");
       reflect_parameter(param, stages[i].shader_stage, program, claims, reflections[i]);
     }
+  }
+  while (next < program->getParameterCount() &&
+         is_glsl_builtin(program->getParameterByIndex(next))) {
+    ++next;
   }
   RUNTIME_EX_ASSERT(next == program->getParameterCount(),
                     "Slang's program layout has parameters no module declares");

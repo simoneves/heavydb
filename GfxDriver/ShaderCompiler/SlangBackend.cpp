@@ -138,12 +138,20 @@ class LibraryFileSystem final : public ISlangFileSystem {
 
 struct SlangBackend::Impl {
   explicit Impl(const Library& library) : file_system(new LibraryFileSystem(library)) {
-    // GLSL support is a separate module (libslang-glsl-module) that the global session
-    // loads only when asked to. Without it the GLSL built-ins are undefined.
+    // GLSL support is a builtin module the global session has to be given. Asked for
+    // with enableGLSL, Slang looks for a precompiled copy in a separate shared library,
+    // libslang-glsl-module-<version>, and failing that compiles it and writes a cache
+    // file, slang-glsl-module.bin, next to whichever binary holds Slang; linked
+    // statically, that is next to the server's executable. Compiling it here instead
+    // needs only the compiler library and writes nothing, at about 0.4 seconds once
+    // per backend, against about 0.13 from the precompiled copy.
     SlangGlobalSessionDesc desc;
-    desc.enableGLSL = true;
     if (SLANG_FAILED(slang::createGlobalSession(&desc, global_session.writeRef()))) {
       THROW_RUNTIME_EX("Failed to create a Slang global session");
+    }
+    if (SLANG_FAILED(
+            global_session->compileBuiltinModule(slang::BuiltinModuleName::GLSL, 0))) {
+      THROW_RUNTIME_EX("Failed to compile Slang's GLSL module");
     }
     spirv_profile = global_session->findProfile("spirv_1_6");
   }
@@ -194,7 +202,13 @@ ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
   // compiled together and share a resource by declaring the same explicit binding in
   // each, which is exactly what it warns about. An overlap that is not meant is still
   // caught, by ShaderRedecorator's clash check.
-  std::array<slang::CompilerOptionEntry, 3> options{};
+  //
+  // No optimization. Slang optimizes its SPIR-V with spirv-opt, which it loads at run
+  // time from a separate shared library, libslang-glslang-<version>; without that
+  // library every compile fails. Unoptimized, it needs no library beyond the compiler,
+  // and its output is identical with or without it. The glslang path does not run
+  // spirv-opt either.
+  std::array<slang::CompilerOptionEntry, 4> options{};
   options[0].name = slang::CompilerOptionName::EmitSpirvDirectly;
   options[0].value.intValue0 = 1;
   options[1].name = slang::CompilerOptionName::VulkanUseEntryPointName;
@@ -202,6 +216,8 @@ ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
   options[2].name = slang::CompilerOptionName::DisableWarnings;
   options[2].value.kind = slang::CompilerOptionValueKind::String;
   options[2].value.stringValue0 = "39001";
+  options[3].name = slang::CompilerOptionName::Optimization;
+  options[3].value.intValue0 = SLANG_OPTIMIZATION_LEVEL_NONE;
 
   slang::SessionDesc session_desc;
   session_desc.targets = &target;

@@ -8,6 +8,7 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -1047,6 +1048,17 @@ void customEntry() {
     auto const text = disassemble(results.stages[0].first);
     EXPECT_NE(text.find("OpEntryPoint Fragment %"), std::string::npos) << text;
     EXPECT_NE(text.find("\"customEntry\""), std::string::npos) << text;
+  }
+
+  // Nothing beyond the compiler library has been loaded: not the GLSL module library,
+  // the backend compiling that module itself, and not libslang-glslang, which Slang
+  // loads only to optimize, which the backend turns off. A static build depends on it.
+  {
+    std::ifstream maps("/proc/self/maps");
+    std::string const loaded((std::istreambuf_iterator<char>(maps)),
+                             std::istreambuf_iterator<char>());
+    EXPECT_EQ(loaded.find("libslang-glsl-module"), std::string::npos);
+    EXPECT_EQ(loaded.find("libslang-glslang"), std::string::npos);
   }
 
   // A failure names the stage it belongs to and fails the material, as with glslang
