@@ -31,6 +31,12 @@
 #    which Slang does not install, and leaves out the two shared libraries
 #    Slang still builds, which only load at run time. The server's Slang
 #    backend needs no other Slang library at run time.
+#
+# 4. The layers target no longer builds glslang, and build_validation_layers()
+#    no longer passes GLSLANG_INSTALL_DIR. At this tag the validation layers
+#    use glslang only in their tests, which BUILD_TESTS=OFF leaves out, and in
+#    an MSVC-only listing of external headers. The server compiles shaders with
+#    Slang, so nothing else here needs glslang either.
 
 # Copyright (c) 2015-2026 LunarG, Inc.
 set -eu
@@ -206,7 +212,6 @@ build_validation_layers() {
     -DCMAKE_BUILD_TYPE="$BUILD_RELDEBINFO_TYPE" \
     -DCMAKE_INSTALL_LIBDIR="lib" \
     -DVULKAN_HEADERS_INSTALL_DIR="$ARCHDIR" \
-    -DGLSLANG_INSTALL_DIR="$ARCHDIR" \
     -DSPIRV_HEADERS_INSTALL_DIR="$ARCHDIR" \
     -DSPIRV_TOOLS_INSTALL_DIR="$ARCHDIR" \
     -DUPDATE_DEPS="OFF" \
@@ -827,7 +832,6 @@ while test $# -gt 0; do
     BUILD_EVERYTHING=0
     BUILD_SPIRV_HEADERS=1
     BUILD_SPIRV_TOOLS=1
-    BUILD_GLSLANG=1
     BUILD_VUL=1
     BUILD_HEADERS=1
     BUILD_SPIRV_HEADERS=1

@@ -1082,8 +1082,10 @@ function install_vulkan() {
   pushd ${VULKAN_VERSION}
   # copy the build script locally
   \cp ${SCRIPTS_DIR}/../ThirdParty/vulkan/vulkansdk-${VULKAN_VERSION} vulkansdk
-  # build just what we need for this platform
-  ./vulkansdk --maxjobs --skip-deps loader glslang spirvcross vul layers slang
+  # build just what we need for this platform. spirvtools builds SPIRV-Headers and
+  # SPIRV-Tools, which the server links for SPIR-V validation and disassembly; glslang
+  # is not built, Slang being the shader compiler
+  ./vulkansdk --maxjobs --skip-deps loader spirvtools spirvcross vul layers slang
   popd
   # install
   rsync -av ${VULKAN_VERSION}/${ARCH}/* ${PREFIX}
