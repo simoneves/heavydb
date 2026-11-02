@@ -5,6 +5,8 @@
 
 #include "GfxDriver/Drivers/Vulkan/Pipeline/VulkanComputePipeline.h"
 
+#include <chrono>
+
 #include "GfxDriver/Drivers/Vulkan/Pipeline/VulkanMaterial.h"
 #include "GfxDriver/Drivers/Vulkan/VulkanDeviceContext.h"
 #include "GfxDriver/Drivers/Vulkan/VulkanResult.h"
@@ -103,6 +105,7 @@ void VulkanComputePipeline::createSpecialization(const uint32_t specialization_i
 
   // create pipeline
   VkPipeline new_pipeline = VK_NULL_HANDLE;
+  auto const create_start = std::chrono::steady_clock::now();
   CHECK_VKRESULT(
       vkCreateComputePipelines(
           static_cast<const VulkanDeviceContext&>(getDeviceContext()).getHandle(),
@@ -112,6 +115,13 @@ void VulkanComputePipeline::createSpecialization(const uint32_t specialization_i
           nullptr,
           &new_pipeline),
       "creating Compute Pipeline");
+  // At debug level 1 only, as the shader compile time is. The driver's own share of
+  // building a pipeline from SPIR-V.
+  VLOG(1) << "Created compute pipeline \"" << getTrackingData().origin << "\" in "
+          << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() -
+                                                       create_start)
+                 .count()
+          << " ms";
 
   // Add it to the map
   pipeline_mgr_->insertPipeline(specialization_id, new_pipeline);
