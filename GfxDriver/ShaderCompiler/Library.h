@@ -51,9 +51,6 @@ class Library {
     DictionaryIndices extension_indices;
     DictionaryIndices include_indices;
     bool is_initialized{false};
-    // Whether this stage may be compiled by the Slang backend, from the manifest. Only
-    // set once its reflection through Slang has been shown to match glslang's.
-    bool slang_ready{false};
   };
 
   // Dictionary class
@@ -112,8 +109,7 @@ class Library {
   void add(const std::string& internal_path,
            const std::string& class_name,
            const std::string& language,
-           const std::string& source,
-           bool slang_ready = false);
+           const std::string& source);
 
   // Check if the library contains a particular shader string
   bool contains(const std::string& internal_path) const;

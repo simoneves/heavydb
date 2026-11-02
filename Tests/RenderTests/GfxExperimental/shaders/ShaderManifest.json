@@ -5,72 +5,63 @@
       "file_path": ".",
       "internal_path": "ExperimentalTests/",
       "language": "glsl",
-      "class": "mesh",
-      "slang": true
+      "class": "mesh"
     },
     {
       "filename": "meshShaderTriangleTest.frag",
       "file_path": ".",
       "internal_path": "ExperimentalTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "meshShaderWorkgroupIDTest.mesh",
       "file_path": ".",
       "internal_path": "ExperimentalTests/",
       "language": "glsl",
-      "class": "mesh",
-      "slang": true
+      "class": "mesh"
     },
     {
       "filename": "meshShaderWorkgroupIDTest.frag",
       "file_path": ".",
       "internal_path": "ExperimentalTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "meshShaderPointsTest.mesh",
       "file_path": ".",
       "internal_path": "ExperimentalTests/",
       "language": "glsl",
-      "class": "mesh",
-      "slang": true
+      "class": "mesh"
     },
     {
       "filename": "meshShaderPointsTest.frag",
       "file_path": ".",
       "internal_path": "ExperimentalTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "taskShaderTest.task",
       "file_path": ".",
       "internal_path": "ExperimentalTests/",
       "language": "glsl",
-      "class": "task",
-      "slang": true
+      "class": "task"
     },
     {
       "filename": "taskShaderTest.mesh",
       "file_path": ".",
       "internal_path": "ExperimentalTests/",
       "language": "glsl",
-      "class": "mesh",
-      "slang": true
+      "class": "mesh"
     },
     {
       "filename": "taskShaderTest.frag",
       "file_path": ".",
       "internal_path": "ExperimentalTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "testUtils.glsl",

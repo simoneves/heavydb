@@ -125,8 +125,7 @@ void Library::addFromManifestFile(const std::string& filename, const std::string
       RUNTIME_EX_ASSERT(!code.empty(),
                         "Error reading shader file: \"" + external_file + "\".");
 
-      bool const slang_ready = source.HasMember("slang") && source["slang"].GetBool();
-      add(internal_name, class_name.GetString(), language.GetString(), code, slang_ready);
+      add(internal_name, class_name.GetString(), language.GetString(), code);
     }
   }
 }
@@ -289,8 +288,7 @@ void Library::updateDictionaries() {
 void Library::add(const std::string& internal_name,
                   const std::string& class_name,
                   const std::string& language,
-                  const std::string& code,
-                  bool slang_ready) {
+                  const std::string& code) {
   RUNTIME_EX_ASSERT(!contains(internal_name),
                     "shader already exists in library: " + internal_name);
 
@@ -299,7 +297,6 @@ void Library::add(const std::string& internal_name,
       internal_name, class_name_to_type_map[class_name], language, code};
 
   // Assign vector lookup index
-  item.slang_ready = slang_ready;
   item.index = item_vector_.size();
   item_vector_.emplace_back(&item);
   are_dictionaries_valid_ = false;

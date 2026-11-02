@@ -47,10 +47,6 @@ static const std::string g_manifest_schema = R"manifest(
           "type": "string",
           "description": "Shader language.",
           "enum": [ "glsl" ]
-        },
-        "slang": {
-          "type": "boolean",
-          "description": "Whether this stage may be compiled by the Slang backend, when that is selected. A material uses Slang only if every one of its stages may."
         }
       }
     }

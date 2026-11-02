@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// SlangSelectionTest: opted in to the Slang backend in the manifest, unlike its
-// fragment shader, so it is compiled by Slang alone and by glslang alongside it.
+// CompilerBackendSelectionTest: compiled by whichever compiler the ShaderManager is
+// set to, and reflected the same by both.
 
 layout(std430, binding = 0) uniform SELECTION_UBO {
   mat4 viewTM;

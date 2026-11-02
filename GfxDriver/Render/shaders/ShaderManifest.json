@@ -75,24 +75,21 @@
       "file_path": "./PBRShading/",
       "internal_path": "Shading/",
       "language": "glsl",
-      "class": "vertex",
-      "slang": true
+      "class": "vertex"
     },
     {
       "filename": "shadingMain.vert",
       "file_path": "./PBRShading/",
       "internal_path": "Shading/",
       "language": "glsl",
-      "class": "vertex",
-      "slang": true
+      "class": "vertex"
     },
     {
       "filename": "shadingMain.frag",
       "file_path": "./PBRShading/",
       "internal_path": "Shading/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "ppllCommon.h",
@@ -106,48 +103,42 @@
       "file_path": "./PPLL/",
       "internal_path": "PPLL/",
       "language": "glsl",
-      "class": "compute",
-      "slang": true
+      "class": "compute"
     },
     {
       "filename": "ppllStats.comp",
       "file_path": "./PPLL/",
       "internal_path": "PPLL/",
       "language": "glsl",
-      "class": "compute",
-      "slang": true
+      "class": "compute"
     },
     {
       "filename": "ppllStatsTiled.comp",
       "file_path": "./PPLL/",
       "internal_path": "PPLL/",
       "language": "glsl",
-      "class": "compute",
-      "slang": true
+      "class": "compute"
     },
     {
       "filename": "ppllStatsTiledBatches_Stage1.comp",
       "file_path": "./PPLL/",
       "internal_path": "PPLL/",
       "language": "glsl",
-      "class": "compute",
-      "slang": true
+      "class": "compute"
     },
     {
       "filename": "ppllStatsTiledBatches_Stage2.comp",
       "file_path": "./PPLL/",
       "internal_path": "PPLL/",
       "language": "glsl",
-      "class": "compute",
-      "slang": true
+      "class": "compute"
     },
     {
       "filename": "ppllCountFragments.frag",
       "file_path": ".//PPLL/",
       "internal_path": "PPLL/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "rtIntersection.glsl",
@@ -182,8 +173,7 @@
       "file_path": "./Raytracing/",
       "internal_path": "Shading/",
       "language": "glsl",
-      "class": "ray_miss",
-      "slang": true
+      "class": "ray_miss"
     },
     {
       "filename": "colorConvertSubroutines.glsl",

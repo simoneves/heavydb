@@ -5,56 +5,49 @@
       "file_path": ".",
       "internal_path": "PPLLTests/",
       "language": "glsl",
-      "class": "vertex",
-      "slang": true
+      "class": "vertex"
     },
     {
       "filename": "countFragmentsTest_accum.frag",
       "file_path": ".",
       "internal_path": "PPLLTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "countFragmentsTest_reference.comp",
       "file_path": ".",
       "internal_path": "PPLLTests/",
       "language": "glsl",
-      "class": "compute",
-      "slang": true
+      "class": "compute"
     },
     {
       "filename": "countFragmentsTest_subgroups.comp",
       "file_path": ".",
       "internal_path": "PPLLTests/",
       "language": "glsl",
-      "class": "compute",
-      "slang": true
+      "class": "compute"
     },
     {
       "filename": "fullScreenTriangle.vert",
       "file_path": ".",
       "internal_path": "PPLLTests/",
       "language": "glsl",
-      "class": "vertex",
-      "slang": true
+      "class": "vertex"
     },
     {
       "filename": "stencilThenCoverTest_stencil.vert",
       "file_path": ".",
       "internal_path": "PPLLTests/",
       "language": "glsl",
-      "class": "vertex",
-      "slang": true
+      "class": "vertex"
     },
     {
       "filename": "stencilThenCoverTest_cover.frag",
       "file_path": ".",
       "internal_path": "PPLLTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     }
   ]
 }

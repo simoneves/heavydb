@@ -12,296 +12,259 @@
       "file_path": ".",
       "internal_path": "DriverTests/",
       "language": "glsl",
-      "class": "vertex",
-      "slang": true
+      "class": "vertex"
     },
     {
       "filename": "canCreateShaderTest.frag",
       "file_path": ".",
       "internal_path": "DriverTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "fullScreenTriangle.vert",
       "file_path": ".",
       "internal_path": "DriverTests/",
       "language": "glsl",
-      "class": "vertex",
-      "slang": true
+      "class": "vertex"
     },
     {
       "filename": "descriptorTest.frag",
       "file_path": ".",
       "internal_path": "DriverTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "drawFullScreenTest.frag",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "drawOneTriangleTest.vert",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "vertex",
-      "slang": true
+      "class": "vertex"
     },
     {
       "filename": "drawOneTriangleTest.frag",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "externalUniformBufferTest1.vert",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "vertex",
-      "slang": true
+      "class": "vertex"
     },
     {
       "filename": "externalUniformBufferTest1.frag",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "externalUniformBufferTest2.vert",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "vertex",
-      "slang": true
+      "class": "vertex"
     },
     {
       "filename": "externalUniformBufferTest2.frag",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "drawAAQuadTest.vert",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "vertex",
-      "slang": true
+      "class": "vertex"
     },
     {
       "filename": "drawAAQuadTest.frag",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "drawAAPointsTest.vert",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "vertex",
-      "slang": true
+      "class": "vertex"
     },
     {
       "filename": "drawAAPointsTest.frag",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "drawAASpheresTest.vert",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "vertex",
-      "slang": true
+      "class": "vertex"
     },
     {
       "filename": "drawAASpheresTest.frag",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "drawAALinesTest.vert",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "vertex",
-      "slang": true
+      "class": "vertex"
     },
     {
       "filename": "drawAALinesTest.frag",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "drawAALinesTest.geom",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "geometry",
-      "slang": true
+      "class": "geometry"
     },
     {
       "filename": "pushConstantTest.vert",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "vertex",
-      "slang": true
+      "class": "vertex"
     },
     {
       "filename": "pushConstantTest.frag",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "depthTest.vert",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "vertex",
-      "slang": true
+      "class": "vertex"
     },
     {
       "filename": "depthTest.frag",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "subpassTest.vert",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "vertex",
-      "slang": true
+      "class": "vertex"
     },
     {
       "filename": "emptyFramebufferTest.frag",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "loadStoreTest_draw.vert",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "vertex",
-      "slang": true
+      "class": "vertex"
     },
     {
       "filename": "loadStoreTest_draw.frag",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "loadStoreTest_color.frag",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "loadStoreTest_extents.frag",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "loadStoreTest_stddev.frag",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "fragmentShaderInterlockTest.vert",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "vertex",
-      "slang": true
+      "class": "vertex"
     },
     {
       "filename": "fragmentShaderInterlockTest.frag",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     },
     {
       "filename": "computeTest.comp",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "compute",
-      "slang": true
+      "class": "compute"
     },
     {
       "filename": "bdaTest.comp",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "compute",
-      "slang": true
+      "class": "compute"
     },
     {
       "filename": "initRenderBufferTest.comp",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "compute",
-      "slang": true
+      "class": "compute"
     },
     {
       "filename": "deviceLostTest.frag",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     }
   ]
 }

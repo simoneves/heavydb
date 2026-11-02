@@ -5,16 +5,14 @@
       "file_path": ".",
       "internal_path": "TableFunctions/",
       "language": "glsl",
-      "class": "vertex",
-      "slang": true
+      "class": "vertex"
     },
     {
       "filename": "tableFunctionTest.frag",
       "file_path": ".",
       "internal_path": "TableFunctions/",
       "language": "glsl",
-      "class": "fragment",
-      "slang": true
+      "class": "fragment"
     }
   ]
 }

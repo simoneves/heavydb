@@ -38,15 +38,12 @@ class ShaderManager : boost::noncopyable {
   //! Destroy current library and replace with a new one (hot loading)
   void replaceLibrary(LibraryUqPtr library);
 
-  //! Choose the compiler. With kSlang, a material is compiled by Slang only if every
-  //! one of its stages has opted in through its manifest; everything else is still
-  //! compiled by glslang, which is the default. The initial choice comes from the
-  //! OMNISCI_shader_compiler_backend environment variable ("glslang" or "slang").
-  //! Throws if kSlang is asked for in a build without Slang (ENABLE_SLANG).
-  void setPreferredCompilerBackend(ShaderCompilerBackendType backend);
-  ShaderCompilerBackendType getPreferredCompilerBackend() const {
-    return preferred_backend_;
-  }
+  //! The compiler every material is compiled by: Slang in a build with Slang
+  //! (ENABLE_SLANG), glslang otherwise. Setting it is for tests that compare the two
+  //! compilers on the same material; nothing else changes it. Throws if kSlang is asked
+  //! for in a build without Slang.
+  void setCompilerBackend(ShaderCompilerBackendType backend);
+  ShaderCompilerBackendType getCompilerBackend() const { return backend_type_; }
 
   //! Retrieve a raw template string from the shader library
   const std::string& getTemplate(const std::string& internal_path) const;
@@ -325,11 +322,9 @@ class ShaderManager : boost::noncopyable {
   ShaderArtifactTypeBits always_save_artifacts_;
   std::string artifact_path_;
 
-  // glslang is always present and compiles everything Slang does not
-  ShaderCompilerBackendUqPtr glslang_backend_;
-  // Created only while Slang is preferred
-  ShaderCompilerBackendUqPtr slang_backend_;
-  ShaderCompilerBackendType preferred_backend_{ShaderCompilerBackendType::kGlslang};
+  // The one backend every material is compiled by, of type backend_type_
+  ShaderCompilerBackendUqPtr backend_;
+  ShaderCompilerBackendType backend_type_;
 
   void createBackends();
 
