@@ -38,13 +38,6 @@ class ShaderManager : boost::noncopyable {
   //! Destroy current library and replace with a new one (hot loading)
   void replaceLibrary(LibraryUqPtr library);
 
-  //! The compiler every material is compiled by: Slang in a build with Slang
-  //! (ENABLE_SLANG), glslang otherwise. Setting it is for tests that compare the two
-  //! compilers on the same material; nothing else changes it. Throws if kSlang is asked
-  //! for in a build without Slang.
-  void setCompilerBackend(ShaderCompilerBackendType backend);
-  ShaderCompilerBackendType getCompilerBackend() const { return backend_type_; }
-
   //! Retrieve a raw template string from the shader library
   const std::string& getTemplate(const std::string& internal_path) const;
 
@@ -285,8 +278,8 @@ class ShaderManager : boost::noncopyable {
   BuilderUqPtr cloneBuilder(const Builder& src) const;
   BuilderUqPtrVector cloneBuilderVector(const BuilderUqPtrVector& src) const;
 
-  // Process operators, invoke glslang, and return a spirv binary suitable for final
-  // specialization.
+  // Process operators, invoke the compiler, and return a spirv binary suitable for
+  // final specialization.
   ShaderCacheShPtrVector createCacheVector(BuilderUqPtrVector&& builders,
                                            bool save_artifacts = false) const;
 
@@ -322,11 +315,9 @@ class ShaderManager : boost::noncopyable {
   ShaderArtifactTypeBits always_save_artifacts_;
   std::string artifact_path_;
 
-  // The one backend every material is compiled by, of type backend_type_
+  // The compiler every material is compiled by. It holds a reference to the library,
+  // so is recreated with it.
   ShaderCompilerBackendUqPtr backend_;
-  ShaderCompilerBackendType backend_type_;
-
-  void createBackends();
 
   void processOperators(Builder& builder,
                         SubroutineMap* rebind_map,
@@ -343,9 +334,9 @@ class ShaderManager : boost::noncopyable {
 
   void rebindSubroutineCalls(Builder& builder, const SubroutineMap& rebind_map) const;
 
-  // Process operators, invoke glslang, and return a spirv binary suitable for final
+  // Process operators, invoke the compiler, and return a spirv binary suitable for final
   // specialization, for every stage of one material. The stages are compiled together
-  // because glslang assigns their I/O across the material rather than per stage.
+  // because Slang lays out their bindings across the material rather than per stage.
   ShaderCacheShPtrVector buildSpirv(BuilderUqPtrVector& builders,
                                     ShaderRedecorator* shader_redecorator,
                                     bool save_artifacts = false) const;

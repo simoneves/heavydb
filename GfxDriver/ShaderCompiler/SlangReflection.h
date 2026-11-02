@@ -5,8 +5,6 @@
 
 #pragma once
 
-#ifdef HAVE_SLANG
-
 #include <string>
 #include <vector>
 
@@ -23,11 +21,11 @@ namespace gfx {
 // just compiled, rather than from its SPIR-V.
 //
 // The difference that matters: Slang leaves out of the SPIR-V any resource the entry
-// point never reads, where glslang keeps every one declared, so a reflection read back
+// point never reads, where glslang kept every one declared, so a reflection read back
 // from Slang's SPIR-V lacks resources the material still binds by name. The program
 // layout has every declared resource, with the binding Slang reserved for it.
 //
-// Produces what ShaderRedecorator produces from glslang's SPIR-V, conventions included:
+// Produces what ShaderRedecorator produced from glslang's SPIR-V, conventions included:
 // a block named by its type, dotted member names in uniform blocks and bare ones in
 // storage blocks, arrays of arrays flattened to element count and stride, a push
 // constant block's span and both of its names, and the scalar type whitelist. Throws
@@ -63,5 +61,3 @@ std::string check_varying_interfaces(
     const std::vector<ShaderCompilerBackend::CompileResult>& compiled);
 
 }  // namespace gfx
-
-#endif  // HAVE_SLANG

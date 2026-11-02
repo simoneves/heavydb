@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifdef HAVE_SLANG
-
 #include "GfxDriver/ShaderCompiler/SlangReflection.h"
 
 #include <algorithm>
@@ -280,9 +278,9 @@ class BindingClaims {
       : material_name_(std::move(material_name)) {}
 
   void claim(int binding, ResourceKind kind, const std::string& name) {
-    // A resource declared in more than one stage gets one binding from glslang, which
-    // matches it by name, but a binding per stage from Slang, which sees a separate
-    // parameter in each, unless it declares its binding explicitly
+    // A resource declared in more than one stage gets a binding per stage from Slang,
+    // which sees a separate parameter in each, unless it declares its binding
+    // explicitly
     auto const [named, first_time] = bindings_by_name_.try_emplace({kind, name}, binding);
     if (!first_time && named->second != binding) {
       THROW_RUNTIME_EX(resource_kind_to_string(kind) + " '" + name +
@@ -322,7 +320,8 @@ void reflect_parameter(VariableLayoutReflection* param,
   auto* type = param->getTypeLayout();
   std::string const name = param->getName();
 
-  // Varyings: only vertex inputs and fragment outputs are reflected, as glslang's are
+  // Varyings: only vertex inputs and fragment outputs are reflected, as ShaderRedecorator
+  // reflects them
   if (category == ParameterCategory::VaryingInput ||
       category == ParameterCategory::VaryingOutput) {
     auto const location = static_cast<int>(param->getBindingIndex());
@@ -849,5 +848,3 @@ std::string check_varying_interfaces(
 }
 
 }  // namespace gfx
-
-#endif  // HAVE_SLANG

@@ -129,7 +129,7 @@ void ShaderRedecorator::redecorateInternal(const spirv_t& spirv,
   spirv_cross::CompilerGLSL compiler(spirv.data(), spirv.size());
   spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
-  // Slang's SPIR-V describes the same interface as glslang's with different names: a
+  // Slang's SPIR-V describes the same interface as glslang's did with different names: a
   // block's type is SLANG_ParameterGroup_<name>_<layout>, which is the name SPIRV-Cross
   // reports for a uniform or storage block. Restore the declared name once, here, so
   // that everything below (bindings, clash messages, the reflection itself) sees the
@@ -219,7 +219,7 @@ void ShaderRedecorator::redecorateInternal(const spirv_t& spirv,
     return type.array.size() ? type.array[0] : 1;
   };
 
-  // capture vertex stage input attributes, at the locations glslang gave them
+  // capture vertex stage input attributes, at the locations the compiler gave them
   if (execution_model == spv::ExecutionModelVertex) {
     if (resources.stage_inputs.size()) {
       LOG_IF(INFO, DEBUG_LOG_REFLECTION)
@@ -251,8 +251,8 @@ void ShaderRedecorator::redecorateInternal(const spirv_t& spirv,
     }
   }
 
-  // Reads the set and binding glslang assigned, checking that the set is the only one
-  // we support and that the binding is not already another resource's
+  // Reads the set and binding the compiler assigned, checking that the set is the only
+  // one we support and that the binding is not already another resource's
   auto claim_binding = [&](const spirv_cross::Resource& resource,
                            ResourceType resource_type) -> uint32_t {
     auto const assigned_set = check_has_decoration(
@@ -327,10 +327,10 @@ void ShaderRedecorator::redecorateInternal(const spirv_t& spirv,
             // PPLL_BATCH_STAT_COUNTERS_SSBO is declared [batches][tiles] and read back
             // into one flat vector by PPLLRender.
             // Every dimension of the member, innermost first as SPIRV-Cross stores them,
-            // and the type of one element. For glslang that is the member's own type and
-            // its dimensions. For Slang the member is a wrapper, so each level is looked
-            // through: the outermost array is the first one found, and each deeper one
-            // is an inner dimension.
+            // and the type of one element. For other compilers that is the member's own
+            // type and its dimensions. For Slang the member is a wrapper, so each level
+            // is looked through: the outermost array is the first one found, and each
+            // deeper one is an inner dimension.
             const spirv_cross::SPIRType* element_type = &declared_type;
             std::vector<uint32_t> dimensions(declared_type.array.begin(),
                                              declared_type.array.end());

@@ -22,7 +22,7 @@
 #   Slang_LIBRARIES - libraries to link against
 #   Slang_FOUND - true if Slang has been found and can be used
 #
-# Slang is linked statically, as glslang is. The deps build installs it as one
+# Slang is linked statically. The deps build installs it as one
 # self-contained static archive, libslang-compiler.a (see build_slang in
 # ThirdParty/vulkan/vulkansdk-1.4.363.0), and only that is accepted: a shared Slang
 # would be a run-time dependency. Code including slang.h has to define SLANG_STATIC.

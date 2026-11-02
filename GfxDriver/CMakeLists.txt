@@ -110,14 +110,16 @@ set(GFXDRIVER_DEFS "" PARENT_SCOPE)
 set(GFXDRIVER_INCLUDE_DIRS "")
 set(GFXDRIVER_LIBS "")
 
-find_package(Glslang REQUIRED)
-
-# Extension enabling. Must match flags specified when building glslang
-add_definitions(-DNV_EXTENSIONS -DAMD_EXTENSIONS)
+find_package(Slang REQUIRED)
 list(APPEND GFXDRIVER_SOURCES
-  ShaderCompiler/GlslangWrapper.cpp
-  ShaderCompiler/ResourceLimits.cpp)
-list(APPEND GFXDRIVER_LIBS ${Glslang_LIBRARIES})
+  ShaderCompiler/SlangBackend.cpp
+  ShaderCompiler/SlangReflection.cpp)
+list(APPEND GFXDRIVER_INCLUDE_DIRS ${Slang_INCLUDE_DIR})
+list(APPEND GFXDRIVER_LIBS ${Slang_LIBRARIES})
+
+# Validation, disassembly and the optimizer, for SPIR-V whatever produced it
+find_package(SpirvTools REQUIRED)
+list(APPEND GFXDRIVER_LIBS ${SpirvTools_LIBRARIES})
 
 find_package(SpirvCross REQUIRED)
 list(APPEND GFXDRIVER_SOURCES
@@ -125,15 +127,6 @@ list(APPEND GFXDRIVER_SOURCES
   ShaderCompiler/SpirvArtifacts.cpp)
 
 list(APPEND GFXDRIVER_LIBS ${SpirvCross_LIBRARIES})
-
-if(ENABLE_SLANG)
-  find_package(Slang REQUIRED)
-  list(APPEND GFXDRIVER_SOURCES
-    ShaderCompiler/SlangBackend.cpp
-    ShaderCompiler/SlangReflection.cpp)
-  list(APPEND GFXDRIVER_INCLUDE_DIRS ${Slang_INCLUDE_DIR})
-  list(APPEND GFXDRIVER_LIBS ${Slang_LIBRARIES})
-endif()
 
 find_package(absl REQUIRED)
 list(APPEND GFXDRIVER_LIBS absl::strings)
@@ -249,12 +242,8 @@ add_library(GfxDriver ${GFXDRIVER_SOURCES})
 target_include_directories(GfxDriver PRIVATE ${GFXDRIVER_INCLUDE_DIRS})
 target_link_libraries(GfxDriver ${GFXDRIVER_LIBS})
 target_compile_definitions(GfxDriver PRIVATE ${GFXDRIVER_DEFS})
-if(ENABLE_SLANG)
-  # Public, since it decides whether SlangBackend.h declares anything
-  target_compile_definitions(GfxDriver PUBLIC HAVE_SLANG)
-  # How slang.h declares its API when Slang is linked statically, which it always is
-  target_compile_definitions(GfxDriver PRIVATE SLANG_STATIC)
-endif()
+# How slang.h declares its API when Slang is linked statically, which it always is
+target_compile_definitions(GfxDriver PRIVATE SLANG_STATIC)
 
 # expose the definitions to the parent
 set(GFXDRIVER_INCLUDE_DIRS ${GFXDRIVER_INCLUDE_DIRS} PARENT_SCOPE)

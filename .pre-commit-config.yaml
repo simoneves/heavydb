@@ -19,8 +19,7 @@
 # Vendored or non-relicensable code keeps its upstream license and is never touched.
 # ThirdParty/ is excluded wholesale, other than ThirdParty/licenses/index-format.sh.
 # The remaining entries are either individual third-party files (in order of listing
-# below: upstream CMake find-modules, SMAA shader textures, Khronos glslang resource
-# header copies, PyTorch snippets, a public university schema, and derivatives of
+# below: upstream CMake find-modules, SMAA shader textures, PyTorch snippets, a public university schema, and derivatives of
 # Apache Calcite/Avatica source) living inside otherwise-NVIDIA trees, or
 # NVIDIA-owned files with manually-stamped SPDX headers excluded only because the
 # pre-commit hook's automated header insertion doesn't handle their comment syntax.
@@ -46,7 +45,6 @@ exclude: |
     ^QueryRenderer/Rendering/textures/SearchTex\.h$|
     ^QueryRenderer/Rendering/shaders/SMAA.*\.frag$|
     ^QueryRenderer/Rendering/shaders/SeparateMultiSample\.frag$|
-    ^GfxDriver/ShaderCompiler/ResourceLimits\.(h|cpp)$|
     ^docs/source/_static/theme_overrides\.css$|
     ^QueryEngine/invoke_example/kernel\.ll$|
     ^QueryEngine/TableFunctions/SystemFunctions/Torch/TorchOps\.hpp$|

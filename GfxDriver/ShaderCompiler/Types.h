@@ -73,10 +73,6 @@ using ShaderManagerUqPtr = std::unique_ptr<ShaderManager>;
 class ShaderCompilerBackend;
 using ShaderCompilerBackendUqPtr = std::unique_ptr<ShaderCompilerBackend>;
 
-// Which compiler a ShaderManager prefers. Slang is only used for a material whose
-// every stage has opted in through its manifest; anything else falls back to glslang.
-enum class ShaderCompilerBackendType { kGlslang, kSlang };
-
 class ShaderReflection;
 using ShaderReflectionUqPtr = std::unique_ptr<ShaderReflection>;
 

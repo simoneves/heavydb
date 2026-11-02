@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifdef HAVE_SLANG
-
 #include "GfxDriver/ShaderCompiler/SlangBackend.h"
 
 #include <array>
@@ -65,7 +63,7 @@ bool same_uuid(const SlangUUID& lhs, const SlangUUID& rhs) {
   return std::memcmp(&lhs, &rhs, sizeof(SlangUUID)) == 0;
 }
 
-// Serves #include directives from the Library, as GlslangIncluder does for glslang.
+// Serves #include directives from the Library.
 // The assembled source names its includes rather than containing them, so without
 // this nearly every shader has undefined functions.
 //
@@ -174,7 +172,7 @@ ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
     return results;
   }
 
-  // As in GlslangWrapper: every failure stops the whole material, so each is recorded
+  // Every failure stops the whole material, so each is recorded
   // against the material as well as against its own stage
   auto const fail_stage = [&results](size_t stage_index, std::string error_string) {
     results.material_error += error_string;
@@ -194,7 +192,7 @@ ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
   target.forceGLSLScalarBufferLayout = true;
 
   //
-  // Slang drops any global resource the entry point does not use, where glslang keeps
+  // Slang drops any global resource the entry point does not use, where glslang kept
   // every one declared. PreserveParameters does not change that for GLSL input, set
   // either on the session or on the target. See SlangUnusedResourcesTest.
   //
@@ -206,8 +204,7 @@ ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
   // No optimization. Slang optimizes its SPIR-V with spirv-opt, which it loads at run
   // time from a separate shared library, libslang-glslang-<version>; without that
   // library every compile fails. Unoptimized, it needs no library beyond the compiler,
-  // and its output is identical with or without it. The glslang path does not run
-  // spirv-opt either.
+  // and its output is identical with or without it.
   std::array<slang::CompilerOptionEntry, 4> options{};
   options[0].name = slang::CompilerOptionName::EmitSpirvDirectly;
   options[0].value.intValue0 = 1;
@@ -243,13 +240,12 @@ ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
   }
 
   // The whole material is one compile request, a GLSL translation unit and an entry
-  // point per stage, so that Slang lays out the bindings of every stage together, as
-  // glslang's shared resolver does. Distinct resources then get distinct bindings
-  // across the stages, and a resource shared between stages gets the same binding in
-  // each only if it declares it explicitly; left to Slang, each stage's copy is a
-  // separate parameter with a binding of its own. The library binds its shared
-  // resources explicitly, and opting a shader in requires its reflection to match
-  // glslang's, which a split binding would not.
+  // point per stage, so that Slang lays out the bindings of every stage together.
+  // Distinct resources then get distinct bindings across the stages, and a resource
+  // shared between stages gets the same binding in each only if it declares it
+  // explicitly; left to Slang, each stage's copy is a separate parameter with a binding
+  // of its own, which the reflection rejects. The library binds its shared resources
+  // explicitly.
   //
   // A compile request is what slangc uses, rather than the newer module API
   // (loadModuleFromSourceString). The module API loses GLSL's workgroup size
@@ -322,7 +318,7 @@ ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
 
   // Reflect from the program layout, which has every declared resource, where the
   // SPIR-V lacks those the entry point never reads. Each stage is also reflected from
-  // its SPIR-V the way glslang's is, and everything found there has to appear in the
+  // its SPIR-V by ShaderRedecorator, and everything found there has to appear in the
   // layout's reflection identically. The layout of a storage block is computed apart
   // from the one Slang emitted, so this is what guarantees the two never disagree
   // about a resource the shader actually uses. Before that, the stages' varyings are
@@ -370,5 +366,3 @@ ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
 }
 
 }  // namespace gfx
-
-#endif  // HAVE_SLANG

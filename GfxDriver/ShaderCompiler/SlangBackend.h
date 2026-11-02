@@ -5,8 +5,6 @@
 
 #pragma once
 
-#ifdef HAVE_SLANG
-
 #include <memory>
 #include <mutex>
 
@@ -15,9 +13,8 @@
 
 namespace gfx {
 
-// Compiles the assembled GLSL through Slang's GLSL compatibility mode. The source is
-// exactly what glslang is given, so this only suits shaders Slang's GLSL subset
-// models, which is why a shader is compiled here only once its manifest opts it in.
+// Compiles the assembled GLSL through Slang's GLSL compatibility mode, so every shader
+// in the library is written in the subset of GLSL that Slang models.
 //
 // A material's stages are compiled together, so their bindings are laid out across the
 // whole material. A resource shared between stages has to declare its binding
@@ -42,5 +39,3 @@ class SlangBackend final : public ShaderCompilerBackend {
 };
 
 }  // namespace gfx
-
-#endif  // HAVE_SLANG

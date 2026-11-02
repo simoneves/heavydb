@@ -20,7 +20,7 @@ class ShaderCompilerStatsReporter {
 
   // Spirv generation stats (convert Builder to spirv)
   // operator_time: time to generate valid GLSL from a Builder
-  // glsl_to_spirv_time: time in GlslangWrapper and spirv-tools
+  // glsl_to_spirv_time: time in the compiler and spirv-tools
   void addBuildSpirvStats(ShaderStage stage,
                           const std::string& template_name,
                           uint64_t operator_time,

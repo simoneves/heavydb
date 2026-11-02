@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// Parses, but has no main, which glslang only rejects when it links the stage.
+// Parses, but has no main, which is only rejected once the entry point is looked for.
 
 out vec4 color;
 
