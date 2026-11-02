@@ -642,6 +642,8 @@ bool VulkanPlatform::isDeviceSuitable(const VulkanPhysicalDevice& device,
     // Vulkan 1.3 features
     auto const& vk13_features = device.getVulkan13Features();
     check_feature(vk13_features.synchronization2, "synchronization2");
+    check_feature(vk13_features.shaderDemoteToHelperInvocation,
+                  "shaderDemoteToHelperInvocation");
 
     if (!all_supported) {
       return false;
@@ -705,6 +707,9 @@ DeviceContextUqPtr VulkanPlatform::createDeviceContext(const heavyai::UUID uuid,
     features_chain.add(VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
                        &vk13_features);
     vk13_features.synchronization2 = VK_TRUE;
+    // Slang compiles GLSL's discard to OpDemoteToHelperInvocation rather than OpKill,
+    // so every fragment shader that discards needs this
+    vk13_features.shaderDemoteToHelperInvocation = VK_TRUE;
 
     //
     // Optional extensions
