@@ -569,9 +569,21 @@ std::string compare_with_spirv_reflection(const ShaderReflection& from_layout,
   std::string differences;
   for (auto const& [section, items] : serialized_items(from_spirv)) {
     auto const found = layout_items.find(section);
+    std::string missing;
     for (auto const& item : items) {
       if (found == layout_items.end() || found->second.count(item) == 0) {
-        differences += section + ":" + item + "\n";
+        missing += "  SPIR-V " + section + ":" + item + "\n";
+      }
+    }
+    if (!missing.empty()) {
+      // What the layout has in the same section, so the two can be told apart
+      differences += missing;
+      if (found != layout_items.end()) {
+        for (auto const& item : found->second) {
+          if (items.count(item) == 0) {
+            differences += "  layout " + section + ":" + item + "\n";
+          }
+        }
       }
     }
   }
