@@ -107,6 +107,20 @@ Whatever is chosen, find out first why a missing block made the accumulation out
 
 Sixteen production stages are now opted in, `accumulatorScale_2ndPass.frag` among them, and be-render-tests against a Slang server gives 441 passing, as glslang does.
 
+## Marks: point and symbol (2026-11-02)
+
+The first Marks are on Slang. `slabAddressTable.glsl` reads slabs through a `SLAB_LOAD` macro, a Slang pointer under `__SLANG__` and the `buffer_reference` types otherwise; that unblocked all five Mark vertex templates that read slabs. Point and symbol need nothing else, being vertex and fragment only, so `pointTemplate.vert/.frag` and `symbolTemplate.vert/.frag` are opted in (`pointTemplate.mesh` is not, so the mesh variant stays on glslang). Twenty production stages are now opted in.
+
+Found on the way:
+- **`mainTemplate_Accumulation.glsl` declared its image coherent**, and is spliced into every Mark fragment shader that accumulates, so every accumulation variant failed through Slang; the static scans had missed it because it is an include. It only uses atomics, so the qualifier went. No shader in the library now declares a coherent image.
+- **The Manual point builders were stale:** saved `.builder` files replay the interface block text of the day they were saved. Refreshed to today's form.
+- **Auto-assigned bindings can be numbered differently** by the two compilers within one material: `OUTPUT_ID_UBO_TYPE` in `pointTemplate.frag` is binding 5 under glslang and 4 under Slang. Harmless, since the runtime binds by reflection, but it means parity across compilers has to allow for renumbered unbound resources, not demand identical bindings.
+- **A full capture cannot always compare like with like for Marks**, since their properties are emitted in a different order from run to run; `symbolTemplate.vert` was captured as different variants in the two runs. For Marks the in-run cross-check between layout and SPIR-V, plus be-render-tests, is the evidence.
+
+be-render-tests with Slang preferred: 441 passing, as with glslang.
+
+Next: measure Slang's compile time on real Mark materials before opting in more, since Marks are compiled per Vega render.
+
 ## 2. Mechanical, glslang-neutral changes
 
 **Done (2026-11-01).** Each verified with be-render-tests on glslang unchanged at 441 passing, and the affected shaders recaptured and compiled through Slang.
