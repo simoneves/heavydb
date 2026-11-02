@@ -1405,6 +1405,47 @@ void main() {
   }
 }
 
+TEST_F(GeneralShaderCompilerTest, SlangLaterExplicitBindingTest) {
+  // From the PR 895 review: glslang resolved the stages one after another, so a binding
+  // it assigned in an earlier stage could take the number a later stage declares
+  // explicitly for a different resource, and the material was refused as a clash.
+  // Slang lays out the whole material at once, so the explicit binding is reserved
+  // before anything is assigned and the two never meet.
+  std::string const header = R"glsl(#version 460
+#extension GL_EXT_scalar_block_layout : require
+)glsl";
+  // Unbound, in the first stage, where a stage-by-stage resolver gives it binding 0
+  auto const vert = header + R"glsl(layout(std430) uniform VERT_UBO {
+  vec4 a;
+};
+void main() {
+  gl_Position = a;
+}
+)glsl";
+  // Bound explicitly to 0, in the later stage only
+  auto const frag = header + R"glsl(layout(binding = 0) uniform sampler2D tex;
+layout(location = 0) out vec4 color;
+void main() {
+  color = texture(tex, vec2(0.0));
+}
+)glsl";
+  SlangBackend slang(this->shaderMgr->getLibrary());
+  auto const results = slang.compileMaterial(
+      {ShaderCompilerBackend::StageSource{
+           "laterExplicit.vert", vert, "main", ShaderStage::kVertex},
+       ShaderCompilerBackend::StageSource{
+           "laterExplicit.frag", frag, "main", ShaderStage::kFragment}});
+  ASSERT_FALSE(results.stages[0].first.empty()) << results.material_error;
+  ASSERT_FALSE(results.stages[1].first.empty()) << results.material_error;
+  ASSERT_EQ(results.reflections.size(), size_t(2));
+
+  // The explicit binding is kept, and the unbound block goes somewhere else
+  EXPECT_EQ(results.reflections[1].getSamplerBinding("tex"), 0);
+  auto const vert_binding = results.reflections[0].getUniformBufferBinding("VERT_UBO");
+  EXPECT_GE(vert_binding, 0);
+  EXPECT_NE(vert_binding, 0);
+}
+
 // A benchmark rather than a test, so disabled: run it with
 // --gtest_also_run_disabled_tests --gtest_filter=*SlangCompileTime* to measure the cost
 // of compiling assembled GLSL through Slang. Materials are compiled at render time, so
