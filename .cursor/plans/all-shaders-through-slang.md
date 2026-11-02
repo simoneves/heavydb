@@ -119,7 +119,15 @@ Found on the way:
 
 be-render-tests with Slang preferred: 441 passing, as with glslang.
 
-Next: measure Slang's compile time on real Mark materials before opting in more, since Marks are compiled per Vega render.
+### Compile time on real Marks (measured 2026-11-02)
+
+With the compile time and a source hash logged at debug level 1, be-render-tests against a Slang server compiled 332 materials: 101 through Slang taking 3.87 s, 231 through glslang taking 0.83 s, over a 2-minute suite (121 s against 115 s with glslang alone).
+- **Per material:** point and symbol about 49 ms through Slang (max about 70) against 3.2 ms through glslang, about 15 times. `fullScreenTriangle` with a post-processing pass 31 ms against 2.7. Single-stage compute 4 to 28 ms against under 1.
+- **Marks are not reused:** a Mark material is compiled again for each new or changed layer. `pointTemplate` compiled 24 times, `symbolTemplate` 23, `fastSymbolTemplate` (still glslang) 91.
+- **28% of compiles repeat a source** already compiled in the same process, and so 28% of Slang's compile time, 1.08 of 3.87 s. be-render-tests is mostly distinct Vegas by design, so an interactive workload re-rendering the same charts likely repeats more.
+- **Projected:** moving fastSymbol, line and the poly Marks at the same ratio would add about 10 s of compiling to the suite, about 50 ms per Mark layer per changed render.
+
+**Recommendation:** a compiled-material cache in `ShaderManager` before moving more Marks, keyed on every stage's assembled source and entry point and on the compiler, holding the SPIR-V and reflection, bounded. It saves the repeats for both compilers, and the same log line measures its hit rate. A persistent on-disk cache, keyed also by Slang's version, would extend that across restarts, if the in-memory one proves worth it.
 
 ## 2. Mechanical, glslang-neutral changes
 
