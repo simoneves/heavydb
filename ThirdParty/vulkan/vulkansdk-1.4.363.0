@@ -8,7 +8,7 @@
 # 1.4.363.0 as of this commit.
 # @TODO(se) add the 1.4.363.0 SDK summary once published
 #
-# Two modifications were made:
+# Three modifications were made:
 #
 # 1. The build_loader() and build_validation_layers() functions were
 #    modified to remove all WSI support (not needed for off-screen
@@ -22,6 +22,14 @@
 #    upstream location (build_tools, build_lunarg_tools,
 #    build_vulkan_profiles, build_vulkancapsviewer) are not among the
 #    targets we build.
+#
+# 3. build_slang() builds Slang as a static library, so that it can be
+#    linked into the server as glslang is, without the debug info Slang
+#    otherwise compiles into Release builds (over a gigabyte in a static
+#    archive), and position-independent. It then merges into
+#    libslang-compiler.a the internal static libraries it depends on,
+#    which Slang does not install. The server's Slang backend needs no
+#    other Slang library at run time.
 
 # Copyright (c) 2015-2026 LunarG, Inc.
 set -eu
@@ -497,6 +505,9 @@ build_slang() {
     -DSLANG_SLANG_LLVM_FLAVOR="DISABLE" \
     -DSLANG_ENABLE_TESTS="OFF" \
     -DSLANG_ENABLE_EXAMPLES="OFF" \
+    -DSLANG_LIB_TYPE="STATIC" \
+    -DSLANG_ENABLE_RELEASE_DEBUG_INFO="OFF" \
+    -DCMAKE_POSITION_INDEPENDENT_CODE="ON" \
     -DCMAKE_INSTALL_INCLUDEDIR="${INCLUDEDIR}/slang/" \
     -DCMAKE_BUILD_TYPE="Release" \
     --install-prefix "$ARCHDIR"
@@ -510,6 +521,36 @@ build_slang() {
   mv -v "${INCLUDEDIR}/slang.h" "${INCLUDEDIR}/slang/"
   mv -v "${INCLUDEDIR}/slang-image-format-defs.h" "${INCLUDEDIR}/slang/"
   mv -v "${INCLUDEDIR}/slang-deprecated.h" "${INCLUDEDIR}/slang/"
+  # Built static, libslang-compiler.a does not contain the internal static libraries
+  # it depends on, and Slang installs neither them nor any record of them, so it
+  # cannot be linked from outside Slang's own build tree. Merge them into it, so that
+  # it is one self-contained archive.
+  SLANG_LIB="${LIBDIR}/libslang-compiler.a"
+  SLANG_BUILD="${SLANG_DIR}/${BUILD_DIR}"
+  set -- \
+    "${SLANG_LIB}" \
+    "${SLANG_BUILD}/Release/lib/libcompiler-core.a" \
+    "${SLANG_BUILD}/Release/lib/libcore.a" \
+    "${SLANG_BUILD}/external/cmark/src/libcmark-gfm.a" \
+    "${SLANG_BUILD}/external/lz4/build/cmake/liblz4.a" \
+    "${SLANG_BUILD}/external/miniz/libminiz.a"
+  # Checked here rather than inside the pipeline below, where an exit would only
+  # leave the subshell feeding ar
+  for SLANG_ARCHIVE in "$@"; do
+    if [ ! -f "${SLANG_ARCHIVE}" ]; then
+      echo "Missing Slang archive ${SLANG_ARCHIVE}" >&2
+      exit 1
+    fi
+  done
+  {
+    echo "CREATE ${SLANG_LIB}.merged"
+    for SLANG_ARCHIVE in "$@"; do
+      echo "ADDLIB ${SLANG_ARCHIVE}"
+    done
+    echo "SAVE"
+    echo "END"
+  } | ar -M
+  mv -v "${SLANG_LIB}.merged" "${SLANG_LIB}"
 }
 
 run_step() {
