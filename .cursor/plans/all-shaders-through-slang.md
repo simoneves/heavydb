@@ -80,8 +80,9 @@ All 147 stages in every manifest are opted in, production and test alike. With S
 
 **Test fixtures that test glslang itself** (the redecorator, the unlocated-varying check) now set the compiler they test, rather than relying on not being opted in. The link failure test runs through both compilers.
 
+**Opt-in flags and the switch removed (2026-11-02).** `"slang"` is gone from the manifests, the schema, the generated library and `Library::Item`, and so is `OMNISCI_shader_compiler_backend`. A build with Slang compiles every material with Slang, and one without compiles with glslang. `ShaderManager::setCompilerBackend` remains, for the tests that compare the two compilers or test glslang itself. A consequence is that in an `ENABLE_SLANG` build the render suite and be-render-tests no longer run through glslang at all; only an `ENABLE_SLANG=off` build does, and that build has not been run since.
+
 **Left to do:**
-- **Remove the opt-in flags.** The user's chosen separate step, now that everything is proven: drop `"slang"` from the manifests and `slang_ready`, so Slang preferred means Slang for everything.
 - **Compile time** (section 6): untouched by request. Every Mark now pays Slang's cost, so the compiled-material cache is the obvious next step.
 - **Upstream Slang reports**, now with these reproducers:
   - `traceRayEXT` internal error;
