@@ -158,7 +158,9 @@ void WindBarbMark::initPropertiesFromJSONObj(const JSONLocation& obj_loc,
         nullptr,
         nullptr,
         nullptr,
-        [this](const JSONLocation&) { do_quantize_direction_.initializeValue(true); });
+        // 1 rather than true: the property is an INT, and a bool would be stored as a
+        // bool under that type, which getUniformValue then refuses to read
+        [this](const JSONLocation&) { do_quantize_direction_.initializeValue(1); });
 
     initIds(data_changed);
 
