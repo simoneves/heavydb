@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <fstream>
 #include <functional>
 #include <utility>
@@ -1303,13 +1304,27 @@ ShaderCacheShPtrVector ShaderManager::buildSpirv(BuilderUqPtrVector& builders,
         return builder->root_item_.slang_ready;
       });
   auto& backend = use_slang ? *slang_backend_ : *glslang_backend_;
-  VLOG(1) << "Compiling " << stage_sources.size() << " stage(s) with "
-          << (use_slang ? "Slang" : "glslang") << ", starting with \""
-          << (stage_sources.empty() ? "" : stage_sources.front().pretty_name) << "\"";
 
   // Generate spirv
+  auto const compile_start = std::chrono::steady_clock::now();
   auto compile_results = backend.compileMaterial(stage_sources);
   CHECK_EQ(compile_results.stages.size(), builders.size());
+  // At debug level 1 only. Lets the two compilers' cost be compared on a real workload.
+  VLOG(1) << "Compiled " << stage_sources.size() << " stage(s) with "
+          << (use_slang ? "Slang" : "glslang") << " in "
+          << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() -
+                                                       compile_start)
+                 .count()
+          << " ms, starting with \""
+          << (stage_sources.empty() ? "" : stage_sources.front().pretty_name)
+          << "\", source hash " << std::hex <<
+      [&stage_sources] {
+        size_t hash = 0;
+        for (auto const& stage : stage_sources) {
+          hash = hash * 31 + std::hash<std::string>{}(stage.source + stage.entry_point);
+        }
+        return hash;
+      }() << std::dec;
 
 #if GENERATE_COMPILE_STATS
   // One compile now covers the whole material, so there is no per stage figure to
