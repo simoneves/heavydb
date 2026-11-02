@@ -85,7 +85,7 @@ All 147 stages in every manifest are opted in, production and test alike. With S
 **glslang removed (2026-11-02).** PR 7 landed: see remaining-slang-migration-work.md. Every material is compiled by Slang, the shaders have no `__SLANG__` conditionals left, and the server links no glslang library. be-render-tests: 441 passing, the two known failures.
 
 **Left to do:**
-- **Compile time** (section 6): untouched by request. Every Mark now pays Slang's cost, so the compiled-material cache is the obvious next step.
+- **Compile time** (section 6): an in-memory material cache landed (`55fbb601eb`), taking be-render-tests' compile time from 30.8 to 21.4 s. The driver's pipeline builds were measured (`b28c6906d1`): 4.0 s with NVIDIA's disk cache, 13.0 s without, so no `VkPipelineCache` yet. The PR 8 spike found that modules alone do not cut the remaining cost; see "Spike findings" under PR 8+ in remaining-slang-migration-work.md.
 - **Upstream Slang reports**, now with these reproducers:
   - `traceRayEXT` internal error;
   - `texelFetch` multisample index;

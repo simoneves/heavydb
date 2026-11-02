@@ -336,6 +336,18 @@ Hard constraint carried over from PR 1: the shader library declares its uniform 
 
 Largest effort, biggest payoff, safely deferrable. Slang interfaces plus generics with link-time specialization replace both the subroutine mechanism and the string-splicing `Builder` that is the root source of this subsystem's complexity. Migrate per-shader or per-family behind the PR 6 flag rather than as a flag day.
 
+### Spike findings (2026-11-02): modules alone do not make compiles faster
+
+A spike on branch `simoneves_pr8_spike` (`5bee920cf0`, worktree `../heavydb-pr8-spike`, write-up in `spikes/pr8/README.md`) moved the two quantitative scales spliced into the fastSymbol vertex stage into a generic Slang module. The mechanism works, but the expected compile-time payoff does not follow from it.
+
+- **Coexistence needs no flag.** The PR 6 flag is gone, and is not needed: a GLSL-syntax shader compiled the server's way can `import` a Slang module and call its generics, so a template can stay GLSL and import whatever has moved.
+- **Generics replace the subroutine retargeting.** The transform, null check and interpolation become interface type arguments. Converting between generic floating-point types needs `__realCast`. Integer domains, colour interpolation, the accumulation path, and rendering equivalence were not covered.
+- **Reflection need not change.** With each scale's uniform block left in the material's shader as today and only the logic in the module, reflection was identical, so `Material` and the Vega property writers are unaffected.
+- **Compile time barely moves.** Per compile, in one persistent session: spliced 29.7 ms, generic module 30.9 ms, a concrete module function 26.0 ms, no scale at all 23.5 ms. The scales were 6 ms of 30; the rest is semantic checking of the material's own body, which differs per material. An earlier note here expected about two-thirds of the per-material cost to become a one-off once shared code was in modules; that was wrong, because the two-thirds is checking the body, not the shared code.
+- **Modules need a persistent session.** A module costs about 30 ms to load per session, so with `SlangBackend`'s session per material the module variant cost twice today's. Keeping one session across materials needs thought about module names, memory growth, and resetting when the Library is replaced.
+
+So the compile-time case for PR 8 rests on link-time specialization of whole templates: compile each template once as a module, express everything that varies per material (types, choices, counts, uniform or per-vertex properties) as generic or specialization parameters, and pay only linking and SPIR-V generation per material, which profiling put at roughly half of today's cost. That requires a template's whole body off text splicing, `Builder` tags included. **Next step before committing to PR 8:** port one whole small template (a post-processing pass or the point template) to a module with a generic entry point, and measure one material's specialization cost in a persistent session. That decides whether PR 8 is justified by compile time, or by the `Builder`'s complexity alone. The in-memory material cache (`55fbb601eb`) already removes repeated compiles.
+
 ## Risks that span the remaining work
 
 - **Slang OSRB approval.** Not technical, entirely outside this plan's control, and a hard gate on shipping anything from PR 6 onward. Start it now rather than when the code is ready.
