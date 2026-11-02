@@ -56,6 +56,18 @@ class GlslStructBuilder {
       std::optional<locations_ref_type> reserved_locations = std::nullopt,
       bool is_geometry_shader = false) const;
 
+  // The same interface as a Slang struct, for the geometry and mesh stages, whose
+  // inputs and outputs Slang's GLSL support does not model: they are entry point
+  // parameters there, of a struct type. The struct is named as the block is, leads with
+  // gl_Position as SV_Position, and gives each member the location
+  // createInterfaceBlockString would, with nointerpolation for flat. It is followed by
+  // an X-macro, <name>_MEMBERS(X), expanding X(type, member) for each member, which
+  // the shader uses to mirror the members as the globals its GLSL body reads and writes.
+  // Array members are not supported.
+  std::string createSlangStructString(
+      bool do_auto_locations,
+      std::optional<locations_ref_type> reserved_locations = std::nullopt) const;
+
  private:
   struct MemberInfo {
     std::string name;

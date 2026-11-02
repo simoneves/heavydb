@@ -500,6 +500,22 @@ TEST_F(GeneralShaderCompilerTest, InterfaceBlockLocationTest) {
   // Geometry inputs are loose variables, unchanged
   auto const geometry = single.createInterfaceBlockString(true, std::nullopt, true);
   EXPECT_NE(geometry.find("layout (location = 1)"), std::string::npos) << geometry;
+
+  // The Slang struct, for geometry and mesh stages, gives each member the location the
+  // block does, leads with the position, and lists the members for the shader to mirror
+  auto const slang_struct = single.createSlangStructString(true);
+  EXPECT_EQ(slang_struct,
+            "struct FragmentShaderInputs {\n"
+            "  float4 gl_Position : SV_Position;\n"
+            "  [[vk::location(0)]] nointerpolation uint64_t fRowId;\n"
+            "  [[vk::location(1)]] vec4 fColor;\n"
+            "  [[vk::location(2)]] float fSize;\n"
+            "};\n"
+            "#define FragmentShaderInputs_MEMBERS(X) X(uint64_t, fRowId) X(vec4, fColor) "
+            "X(float, fSize)\n");
+  auto const wide_struct = wide.createSlangStructString(true);
+  EXPECT_NE(wide_struct.find("[[vk::location(2)]] float fLast"), std::string::npos)
+      << wide_struct;
 }
 
 //

@@ -176,4 +176,43 @@ std::string GlslStructBuilder::createInterfaceBlockString(
   return ss.str();
 }
 
+std::string GlslStructBuilder::createSlangStructString(
+    bool do_auto_locations,
+    std::optional<locations_ref_type> reserved_locations) const {
+  CHECK(!member_vector_.empty());
+  std::stringstream ss;
+  ss << "struct " << name_ << " {\n  float4 gl_Position : SV_Position;";
+  // The locations createInterfaceBlockString gives, whether on the block or per member:
+  // with one on the block, every member takes one location, so the two agree
+  int location = 0;
+  for (auto const& info : member_vector_) {
+    CHECK(!info.is_array) << "Array member '" << info.name
+                          << "' is not supported in a Slang interface struct";
+    ss << "\n  ";
+    if (do_auto_locations) {
+      ss << "[[vk::location(" << location << ")]] ";
+      location++;
+      if (reserved_locations) {
+        while (reserved_locations.value().get().count(location)) {
+          location++;
+        }
+      }
+    }
+    for (auto qualifier : info.qualifiers) {
+      switch (qualifier) {
+        case Qualifier::kFlat:
+          ss << "nointerpolation ";
+          break;
+      }
+    }
+    ss << to_string_glsl_decl(info.type) << " " << info.name << ";";
+  }
+  ss << "\n};\n#define " << name_ << "_MEMBERS(X)";
+  for (auto const& info : member_vector_) {
+    ss << " X(" << to_string_glsl_decl(info.type) << ", " << info.name << ")";
+  }
+  ss << "\n";
+  return ss.str();
+}
+
 }  // namespace gfx
