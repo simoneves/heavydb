@@ -178,10 +178,14 @@ std::string GlslStructBuilder::createInterfaceBlockString(
 
 std::string GlslStructBuilder::createSlangStructString(
     bool do_auto_locations,
-    std::optional<locations_ref_type> reserved_locations) const {
+    std::optional<locations_ref_type> reserved_locations,
+    bool with_point_size) const {
   CHECK(!member_vector_.empty());
   std::stringstream ss;
   ss << "struct " << name_ << " {\n  float4 gl_Position : SV_Position;";
+  if (with_point_size) {
+    ss << "\n  float gl_PointSize : SV_PointSize;";
+  }
   // The locations createInterfaceBlockString gives, whether on the block or per member:
   // with one on the block, every member takes one location, so the two agree
   int location = 0;

@@ -63,10 +63,12 @@ class GlslStructBuilder {
   // createInterfaceBlockString would, with nointerpolation for flat. It is followed by
   // an X-macro, <name>_MEMBERS(X), expanding X(type, member) for each member, which
   // the shader uses to mirror the members as the globals its GLSL body reads and writes.
-  // Array members are not supported.
+  // Array members are not supported. with_point_size adds gl_PointSize as SV_PointSize
+  // after the position, for a mesh shader drawing points.
   std::string createSlangStructString(
       bool do_auto_locations,
-      std::optional<locations_ref_type> reserved_locations = std::nullopt) const;
+      std::optional<locations_ref_type> reserved_locations = std::nullopt,
+      bool with_point_size = false) const;
 
  private:
   struct MemberInfo {

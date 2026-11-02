@@ -558,6 +558,10 @@ void SymbolMark_Proc::updateShader() {
     // WIP
     auto attr_fetch_str = buildVertexAttributeFetches();
     builders[0]->replaceFirstTag("VertexAttributeFetches", attr_fetch_str);
+
+    // The mesh shader's Slang form of its outputs
+    builders[0]->replaceFirstTag("FragmentShaderInputsSlang",
+                                 fragment_inputs.createSlangStructString(true));
   }
 
   for (auto const* prop : prop_buf_loc_state_.vbo_props) {

@@ -513,6 +513,13 @@ TEST_F(GeneralShaderCompilerTest, InterfaceBlockLocationTest) {
             "};\n"
             "#define FragmentShaderInputs_MEMBERS(X) X(uint64_t, fRowId) X(vec4, fColor) "
             "X(float, fSize)\n");
+  // A mesh shader drawing points writes the point size too
+  auto const point_struct = single.createSlangStructString(true, std::nullopt, true);
+  EXPECT_NE(point_struct.find("  float4 gl_Position : SV_Position;\n"
+                              "  float gl_PointSize : SV_PointSize;\n"
+                              "  [[vk::location(0)]]"),
+            std::string::npos)
+      << point_struct;
   auto const wide_struct = wide.createSlangStructString(true);
   EXPECT_NE(wide_struct.find("[[vk::location(2)]] float fLast"), std::string::npos)
       << wide_struct;
