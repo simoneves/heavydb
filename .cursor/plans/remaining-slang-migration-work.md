@@ -338,7 +338,7 @@ Largest effort, biggest payoff, safely deferrable. Slang interfaces plus generic
 
 ### Spike findings (2026-11-02): modules alone do not make compiles faster
 
-A spike on branch `simoneves_pr8_spike` (`5bee920cf0`, worktree `../heavydb-pr8-spike`, write-up in `spikes/pr8/README.md`) moved the two quantitative scales spliced into the fastSymbol vertex stage into a generic Slang module. The mechanism works, but the expected compile-time payoff does not follow from it.
+A spike, kept on branch `simoneves_pr8_spike` (two commits on `master` holding only `spikes/pr8/`, with the code, the timing program and the write-up in `spikes/pr8/README.md`), moved the two quantitative scales spliced into the fastSymbol vertex stage into a generic Slang module. The mechanism works, but the expected compile-time payoff does not follow from it.
 
 - **Coexistence needs no flag.** The PR 6 flag is gone, and is not needed: a GLSL-syntax shader compiled the server's way can `import` a Slang module and call its generics, so a template can stay GLSL and import whatever has moved.
 - **Generics replace the subroutine retargeting.** The transform, null check and interpolation become interface type arguments. Converting between generic floating-point types needs `__realCast`. Integer domains, colour interpolation, the accumulation path, and rendering equivalence were not covered.
@@ -350,7 +350,7 @@ So the compile-time case for PR 8 rests on whole templates, not shared pieces: c
 
 ### Follow-up spike (2026-11-02): whole templates as modules halve the cost
 
-The follow-up (`7671e6cdf4`, same branch and write-up) ported the point Mark's whole vertex stage to a generic module, `pointVertex`, with each material reduced to glue: its declarations exactly as today, two small structs implementing `IPointProperties` and `IProjection` against them, and a `main` calling the module. The captured material's reflection was identical to the spliced shader's, and a second kind of point material (no key, size per vertex, unprojected) used the same module.
+The follow-up, the second commit on the same branch, ported the point Mark's whole vertex stage to a generic module, `pointVertex`, with each material reduced to glue: its declarations exactly as today, two small structs implementing `IPointProperties` and `IProjection` against them, and a `main` calling the module. The captured material's reflection was identical to the spliced shader's, and a second kind of point material (no key, size per vertex, unprojected) used the same module.
 
 Per compile, in one session: spliced as today 16.8 ms; module, captured material 8.3 ms; module, second material 6.7 ms. Loading the module costs about 10 ms once per session; with a session per material, as now, there is no gain. So whole templates as modules roughly halve the per-material cost. Across be-render-tests' first-time compiles, about 21 s after the in-memory cache, that would be roughly half again, if the larger templates behave like this one.
 
