@@ -25,3 +25,7 @@ To recreate the `.reflect` files from existing `.builder` files:
 * Run `ShaderCompilerTest --regenerate-reflect`
 * **Always read the resulting diff.** Regenerating is only correct once you have decided the new bindings, offsets and locations are what you want. A diff you cannot explain is a bug, not a baseline.
 * Setting `OMNISCI_always_save_shader_artifacts=reflect` writes the same format as a `.reflect` artifact for any shader the server compiles, which is the quickest way to see the reflection for a shader that has no test case.
+
+### Comparing glslang and Slang
+
+The server compiles with Slang only, but `compare_compilers.py` can still compare the two compilers on the shaders the renderer actually assembles: compile time, `spirv-val`, and the reflection each compiler's SPIR-V gives the renderer, diffed in the `.reflect` format. It needs a corpus captured from a server run (`OMNISCI_always_save_shader_artifacts=all`), a standalone glslang built at the tag the deps used to pin, and the `SpirvReflect` tool this directory builds. Its docstring has the steps, and the limits of what it can tell you: it compiles one stage at a time, reflects both from SPIR-V, and glslang rejects the stages that use Slang-only constructs.

@@ -9,6 +9,8 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 add_subdirectory(VegaRenderTest)
 
 add_executable(ShaderCompilerTest ShaderCompiler/ShaderCompilerTest.cpp)
+# Prints a SPIR-V module's reflection, for ShaderCompiler/compare_compilers.py
+add_executable(SpirvReflect ShaderCompiler/SpirvReflect.cpp)
 add_executable(GfxDriverTest
   GfxDriver/GfxDriverTest.cpp
   GfxDriver/GfxCommandTest.cpp
@@ -59,6 +61,7 @@ target_include_directories(ShaderCompilerTest PRIVATE ${CMAKE_CURRENT_BINARY_DIR
 target_include_directories(QueryRendererTest PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/../../QueryRenderer/gen-cpp/ShaderTemplates)
 
 target_link_libraries(ShaderCompilerTest gtest GfxDriver Shared QueryRendererShaderTemplates)
+target_link_libraries(SpirvReflect GfxDriver Shared)
 target_link_libraries(GfxDriverTest gtest GfxDriver Shared ${TBB_LIBS} ${CMAKE_DL_LIBS})
 
 set(GFX_INTEROP_TEST_LIBS gtest GfxDriver GfxInterop Shared)
