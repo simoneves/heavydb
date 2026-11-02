@@ -28,8 +28,9 @@
 #    otherwise compiles into Release builds (over a gigabyte in a static
 #    archive), and position-independent. It then merges into
 #    libslang-compiler.a the internal static libraries it depends on,
-#    which Slang does not install. The server's Slang backend needs no
-#    other Slang library at run time.
+#    which Slang does not install, and leaves out the two shared libraries
+#    Slang still builds, which only load at run time. The server's Slang
+#    backend needs no other Slang library at run time.
 
 # Copyright (c) 2015-2026 LunarG, Inc.
 set -eu
@@ -551,6 +552,11 @@ build_slang() {
     echo "END"
   } | ar -M
   mv -v "${SLANG_LIB}.merged" "${SLANG_LIB}"
+  # Slang installs two shared libraries even when built static, loaded at run time
+  # only for what the server's backend does without: a precompiled copy of the GLSL
+  # module, which the backend compiles itself, and spirv-opt, which it turns off.
+  # Leave them out, so that Slang is installed as static libraries alone.
+  rm -v "${LIBDIR}"/libslang-glsl-module-*.so "${LIBDIR}"/libslang-glslang-*.so
 }
 
 run_step() {
