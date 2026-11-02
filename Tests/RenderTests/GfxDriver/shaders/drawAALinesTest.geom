@@ -4,8 +4,10 @@
  */
 
 
+#ifndef __SLANG__
 layout(lines_adjacency) in;
 layout(triangle_strip, max_vertices = 8) out;
+#endif
 
 #define LINE_JOIN_BEVEL 0
 #define LINE_JOIN_ROUND 1
@@ -13,6 +15,29 @@ layout(triangle_strip, max_vertices = 8) out;
 
 #define NO_DIST_COORDS vec2(0.0)
 
+#ifdef __SLANG__
+// See Slang/slangGeometry.glsl
+struct GeometryIn {
+  float4 gl_Position : SV_Position;
+  [[vk::location(0)]] vec4 gColor;
+  [[vk::location(1)]] float gStrokeWidth;
+  [[vk::location(2)]] nointerpolation int gLineJoin;
+  [[vk::location(3)]] float gMiterLimit;
+};
+#define GeometryIn_MEMBERS(X) \
+  X(vec4, gColor) X(float, gStrokeWidth) X(int, gLineJoin) X(float, gMiterLimit)
+struct GeometryOut {
+  float4 gl_Position : SV_Position;
+  [[vk::location(0)]] vec2 fNormDistCoords;
+  [[vk::location(1)]] nointerpolation vec4 fColor;
+};
+#define GeometryOut_MEMBERS(X) X(vec2, fNormDistCoords) X(vec4, fColor)
+#define SLANG_GEOMETRY_IN GeometryIn
+#define SLANG_GEOMETRY_IN_MEMBERS GeometryIn_MEMBERS
+#define SLANG_GEOMETRY_IN_COUNT 4
+#define SLANG_GEOMETRY_OUT GeometryOut
+#define SLANG_GEOMETRY_OUT_MEMBERS GeometryOut_MEMBERS
+#else
 // start input data
 layout(location = 0) in vec4 gColor[];
 layout(location = 1) in float gStrokeWidth[];
@@ -24,12 +49,15 @@ layout(location = 3) in float gMiterLimit[];
 layout(location = 0) out vec2 fNormDistCoords;
 layout(location = 1) flat out vec4 fColor;
 // end output data
+#endif
+#include "Slang/slangGeometry.glsl"
 
 void emitVertex(
   in vec2 pos,
   in vec2 zw,
   in vec2 norm_dist_coords,
-  in vec4 color) {
+  in vec4 color
+  SLANG_GEOMETRY_STREAM_EXTRA) {
   gl_Position = vec4(pos, zw);
   fNormDistCoords = norm_dist_coords;
   fColor = color;
@@ -53,7 +81,8 @@ void renderStroke(
   in vec4 color,
   in float line_width,
   in int line_join,
-  in float miter_limit) {
+  in float miter_limit
+  SLANG_GEOMETRY_STREAM_EXTRA) {
   // main segment
   vec2 segment_dir = pos2 - pos1;
   float segment_len = length(segment_dir);
@@ -90,16 +119,16 @@ void renderStroke(
       if (cross(prev_segment_dir, segment_dir) > 0.0) {
         // right turn
         vec2 prev_pos2a = pos1 + (line_half_width * prev_segment_norm);
-        emitVertex(prev_pos2a, zw1, NO_DIST_COORDS, color);
-        emitVertex(pos1a, zw1, NO_DIST_COORDS, color);
-        emitVertex(pos1, zw1, NO_DIST_COORDS, color);
+        emitVertex(prev_pos2a, zw1, NO_DIST_COORDS, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+        emitVertex(pos1a, zw1, NO_DIST_COORDS, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+        emitVertex(pos1, zw1, NO_DIST_COORDS, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
         EndPrimitive();
       } else {
         // left turn
         vec2 prev_pos2b = pos1 - (line_half_width * prev_segment_norm);
-        emitVertex(prev_pos2b, zw1, NO_DIST_COORDS, color);
-        emitVertex(pos1, zw1, NO_DIST_COORDS, color);
-        emitVertex(pos1b, zw1, NO_DIST_COORDS, color);
+        emitVertex(prev_pos2b, zw1, NO_DIST_COORDS, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+        emitVertex(pos1, zw1, NO_DIST_COORDS, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+        emitVertex(pos1b, zw1, NO_DIST_COORDS, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
         EndPrimitive();
       }
     } else {
@@ -120,17 +149,17 @@ void renderStroke(
           vec2 miter_pos = pos1 + (line_half_width * miter_pos_norm);
           if (line_join == LINE_JOIN_ROUND) {
             // draw with coords for clipping
-            emitVertex(prev_pos2a, zw1, prev_pos2a_norm, color);
-            emitVertex(miter_pos, zw1, miter_pos_norm, color);
-            emitVertex(pos1, zw1, vec2(0.0), color);
-            emitVertex(pos1a, zw1, pos1a_norm, color);
+            emitVertex(prev_pos2a, zw1, prev_pos2a_norm, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+            emitVertex(miter_pos, zw1, miter_pos_norm, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+            emitVertex(pos1, zw1, vec2(0.0), color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+            emitVertex(pos1a, zw1, pos1a_norm, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
             EndPrimitive();
           } else {
             // draw with no coords
-            emitVertex(prev_pos2a, zw1, NO_DIST_COORDS, color);
-            emitVertex(miter_pos, zw1, NO_DIST_COORDS, color);
-            emitVertex(pos1, zw1, NO_DIST_COORDS, color);
-            emitVertex(pos1a, zw1, NO_DIST_COORDS, color);
+            emitVertex(prev_pos2a, zw1, NO_DIST_COORDS, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+            emitVertex(miter_pos, zw1, NO_DIST_COORDS, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+            emitVertex(pos1, zw1, NO_DIST_COORDS, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+            emitVertex(pos1a, zw1, NO_DIST_COORDS, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
             EndPrimitive();
           }
         } else {
@@ -141,17 +170,17 @@ void renderStroke(
           vec2 miter_pos = pos1 - (line_half_width * miter_pos_norm);
           if (line_join == LINE_JOIN_ROUND) {
             // draw with coords for clipping
-            emitVertex(prev_pos2b, zw1, prev_pos2b_norm, color);
-            emitVertex(pos1, zw1, vec2(0.0), color);
-            emitVertex(miter_pos, zw1, miter_pos_norm, color);
-            emitVertex(pos1b, zw1, pos1b_norm, color);
+            emitVertex(prev_pos2b, zw1, prev_pos2b_norm, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+            emitVertex(pos1, zw1, vec2(0.0), color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+            emitVertex(miter_pos, zw1, miter_pos_norm, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+            emitVertex(pos1b, zw1, pos1b_norm, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
             EndPrimitive();
           } else {
             // draw with no coords
-            emitVertex(prev_pos2b, zw1, NO_DIST_COORDS, color);
-            emitVertex(pos1, zw1, NO_DIST_COORDS, color);
-            emitVertex(miter_pos, zw1, NO_DIST_COORDS, color);
-            emitVertex(pos1b, zw1, NO_DIST_COORDS, color);
+            emitVertex(prev_pos2b, zw1, NO_DIST_COORDS, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+            emitVertex(pos1, zw1, NO_DIST_COORDS, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+            emitVertex(miter_pos, zw1, NO_DIST_COORDS, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+            emitVertex(pos1b, zw1, NO_DIST_COORDS, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
             EndPrimitive();
           }
         }
@@ -159,15 +188,15 @@ void renderStroke(
     }
 
     // draw the main segment
-    emitVertex(pos1a, zw1, NO_DIST_COORDS, color);
-    emitVertex(pos2a, zw2, NO_DIST_COORDS, color);
-    emitVertex(pos1b, zw1, NO_DIST_COORDS, color);
-    emitVertex(pos2b, zw2, NO_DIST_COORDS, color);
+    emitVertex(pos1a, zw1, NO_DIST_COORDS, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+    emitVertex(pos2a, zw2, NO_DIST_COORDS, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+    emitVertex(pos1b, zw1, NO_DIST_COORDS, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+    emitVertex(pos2b, zw2, NO_DIST_COORDS, color SLANG_GEOMETRY_STREAM_EXTRA_ARG);
     EndPrimitive();
   }
 }
 
-void main() {
+void geometry_main(SLANG_GEOMETRY_STREAM) {
   renderStroke(
     gl_in[0].gl_Position.xy,
     gl_in[1].gl_Position.xy,
@@ -177,5 +206,18 @@ void main() {
     gColor[1],
     gStrokeWidth[1],
     gLineJoin[1],
-    gMiterLimit[1]);
+    gMiterLimit[1]
+    SLANG_GEOMETRY_STREAM_EXTRA_ARG);
 }
+
+#ifdef __SLANG__
+[maxvertexcount(8)]
+void main(lineadj GeometryIn slang_geometry_input_[4], SLANG_GEOMETRY_STREAM) {
+  SLANG_GEOMETRY_LOAD_INPUTS();
+  geometry_main(SLANG_GEOMETRY_STREAM_ARG);
+}
+#else
+void main() {
+  geometry_main();
+}
+#endif
