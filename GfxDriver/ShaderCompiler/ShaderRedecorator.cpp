@@ -397,9 +397,16 @@ void ShaderRedecorator::redecorateInternal(const spirv_t& spirv,
               // iterate children and flatten
               uint32_t struct_member_count = member_type.member_types.size();
               for (uint32_t j = 0; j < struct_member_count; j++) {
-                // get child
-                auto const& child_member_type =
-                    compiler.get_type(member_type.member_types[j]);
+                // get child. An array child of Slang's comes wrapped like an array
+                // member does; its size and offset are the wrapper's, which are the
+                // array's, so only the type to validate needs unwrapping.
+                auto const* child_element_type =
+                    &compiler.get_type(member_type.member_types[j]);
+                while (is_slang_array_wrapper(*child_element_type)) {
+                  child_element_type = &compiler.get_type(
+                      compiler.get_type(child_element_type->self).member_types[0]);
+                }
+                auto const& child_member_type = *child_element_type;
                 auto const& child_member_name =
                     compiler.get_member_name(member_type.self, j);
                 auto const child_member_offset =

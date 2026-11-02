@@ -78,8 +78,11 @@ size_t declared_struct_size(TypeLayoutReflection* type) {
 
 // The scalar type underlying a scalar, vector or matrix
 TypeReflection::ScalarType leaf_scalar_type(TypeReflection* type) {
+  // An array is reached only as a struct's child, int pad[3] in a struct member; a
+  // member's own array dimensions are taken off before it is validated
   while (type->getKind() == TypeReflection::Kind::Vector ||
-         type->getKind() == TypeReflection::Kind::Matrix) {
+         type->getKind() == TypeReflection::Kind::Matrix ||
+         type->getKind() == TypeReflection::Kind::Array) {
     type = type->getElementType();
   }
   return type->getScalarType();

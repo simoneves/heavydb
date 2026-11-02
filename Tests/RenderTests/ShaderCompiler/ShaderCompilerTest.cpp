@@ -1142,6 +1142,7 @@ struct Tile {
 struct Stats {
   uint64_t total;
   uint max_count;
+  uint pad[3];
 };
 layout(std430, binding = 0) uniform ARRAY_UBO {
   vec4 colors[3];
