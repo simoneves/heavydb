@@ -75,21 +75,24 @@
       "file_path": "./PBRShading/",
       "internal_path": "Shading/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "shadingMain.vert",
       "file_path": "./PBRShading/",
       "internal_path": "Shading/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "shadingMain.frag",
       "file_path": "./PBRShading/",
       "internal_path": "Shading/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "ppllCommon.h",
@@ -179,7 +182,8 @@
       "file_path": "./Raytracing/",
       "internal_path": "Shading/",
       "language": "glsl",
-      "class": "ray_miss"
+      "class": "ray_miss",
+      "slang": true
     },
     {
       "filename": "colorConvertSubroutines.glsl",

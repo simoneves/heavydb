@@ -12,63 +12,72 @@
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "fastSymbolTemplate.frag",
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "fastSymbolTemplate_passthru.vert",
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "fastSymbolTemplate.geom",
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "geometry"
+      "class": "geometry",
+      "slang": true
     },
     {
       "filename": "fastSymbolTemplate.mesh",
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "mesh"
+      "class": "mesh",
+      "slang": true
     },
     {
       "filename": "lineTemplate.vert",
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "lineTemplate.geom",
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "geometry"
+      "class": "geometry",
+      "slang": true
     },
     {
       "filename": "lineTemplate_FillBelow.geom",
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "geometry"
+      "class": "geometry",
+      "slang": true
     },
     {
       "filename": "lineTemplate.frag",
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "pointTemplate.vert",
@@ -83,7 +92,8 @@
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "mesh"
+      "class": "mesh",
+      "slang": true
     },
     {
       "filename": "pointTemplate.frag",
@@ -114,21 +124,24 @@
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "windBarbTemplate.frag",
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "windBarbTemplate.geom",
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "geometry"
+      "class": "geometry",
+      "slang": true
     },
     {
       "filename": "mesh2dTemplate.vert",
@@ -268,7 +281,8 @@
       "file_path": "./Rendering/shaders",
       "internal_path": "Rendering/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "MSMultiGpuComposite.comp",
@@ -283,7 +297,8 @@
       "file_path": "./Rendering/shaders",
       "internal_path": "Rendering/",
       "language": "glsl",
-      "class": "compute"
+      "class": "compute",
+      "slang": true
     },
     {
       "filename": "accumulatorTx_findExtents.comp",
@@ -375,14 +390,16 @@
       "file_path": "./Rendering/shaders",
       "internal_path": "Rendering/",
       "language": "glsl",
-      "class": "compute"
+      "class": "compute",
+      "slang": true
     },
     {
       "filename": "geoCount_build.comp",
       "file_path": "./Rendering/shaders",
       "internal_path": "Rendering/",
       "language": "glsl",
-      "class": "compute"
+      "class": "compute",
+      "slang": true
     }
   ]
 }

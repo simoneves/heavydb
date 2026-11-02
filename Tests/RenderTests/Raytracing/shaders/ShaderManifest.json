@@ -5,42 +5,48 @@
       "file_path": ".",
       "internal_path": "RaytracingTest/",
       "language": "glsl",
-      "class": "ray_gen"
+      "class": "ray_gen",
+      "slang": true
     },
     {
       "filename": "DrawOneSphere.closest",
       "file_path": ".",
       "internal_path": "RaytracingTest/",
       "language": "glsl",
-      "class": "ray_closest_hit"
+      "class": "ray_closest_hit",
+      "slang": true
     },
     {
       "filename": "DrawOneSphere.miss",
       "file_path": ".",
       "internal_path": "RaytracingTest/",
       "language": "glsl",
-      "class": "ray_miss"
+      "class": "ray_miss",
+      "slang": true
     },
     {
       "filename": "Instancing.raygen",
       "file_path": ".",
       "internal_path": "RaytracingTest/",
       "language": "glsl",
-      "class": "ray_gen"
+      "class": "ray_gen",
+      "slang": true
     },
     {
       "filename": "Instancing.closest",
       "file_path": ".",
       "internal_path": "RaytracingTest/",
       "language": "glsl",
-      "class": "ray_closest_hit"
+      "class": "ray_closest_hit",
+      "slang": true
     },
     {
       "filename": "Instancing.miss",
       "file_path": ".",
       "internal_path": "RaytracingTest/",
       "language": "glsl",
-      "class": "ray_miss"
+      "class": "ray_miss",
+      "slang": true
     },
     {
       "filename": "AABB_payload.glsl",
@@ -54,42 +60,48 @@
       "file_path": ".",
       "internal_path": "RaytracingTest/",
       "language": "glsl",
-      "class": "ray_gen"
+      "class": "ray_gen",
+      "slang": true
     },
     {
       "filename": "AABB_mesh.closest",
       "file_path": ".",
       "internal_path": "RaytracingTest/",
       "language": "glsl",
-      "class": "ray_closest_hit"
+      "class": "ray_closest_hit",
+      "slang": true
     },
     {
       "filename": "AABB_procedural.closest",
       "file_path": ".",
       "internal_path": "RaytracingTest/",
       "language": "glsl",
-      "class": "ray_closest_hit"
+      "class": "ray_closest_hit",
+      "slang": true
     },
     {
       "filename": "AABB.miss",
       "file_path": ".",
       "internal_path": "RaytracingTest/",
       "language": "glsl",
-      "class": "ray_miss"
+      "class": "ray_miss",
+      "slang": true
     },
     {
       "filename": "AABB.isect",
       "file_path": ".",
       "internal_path": "RaytracingTest/",
       "language": "glsl",
-      "class": "ray_intersection"
+      "class": "ray_intersection",
+      "slang": true
     },
     {
       "filename": "AABB.call",
       "file_path": ".",
       "internal_path": "RaytracingTest/",
       "language": "glsl",
-      "class": "ray_callable"
+      "class": "ray_callable",
+      "slang": true
     },
     {
       "filename": "BlasMultiMesh_payload.glsl",
@@ -103,21 +115,24 @@
       "file_path": ".",
       "internal_path": "RaytracingTest/",
       "language": "glsl",
-      "class": "ray_gen"
+      "class": "ray_gen",
+      "slang": true
     },
     {
       "filename": "BlasMultiMesh.closest",
       "file_path": ".",
       "internal_path": "RaytracingTest/",
       "language": "glsl",
-      "class": "ray_closest_hit"
+      "class": "ray_closest_hit",
+      "slang": true
     },
     {
       "filename": "BlasMultiMesh.miss",
       "file_path": ".",
       "internal_path": "RaytracingTest/",
       "language": "glsl",
-      "class": "ray_miss"
+      "class": "ray_miss",
+      "slang": true
     }
   ]
 }

@@ -5,28 +5,32 @@
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "drawOneInteropTriangleTest.frag",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "importCudaBufferTest.vert",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "importCudaBufferTest.frag",
       "file_path": ".",
       "internal_path": "RenderTests/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     }
   ]
 }
