@@ -6,7 +6,7 @@
 layout (location=0) out vec4 color;
 
 layout(std430) uniform DRAW_FULLSCREEN_FRAG_UBO_TYPE {
-  vec2 imageSize;
+  vec2 viewportSize;
   int invertY;
   int loopEnd;
 };
@@ -19,5 +19,5 @@ void main() {
     y = float(x) * sqrt(y) + 4.0;
     x++;
   }
-  color = vec4(gl_FragCoord.x / imageSize.x, y, 0.0, 1.0);
+  color = vec4(gl_FragCoord.x / viewportSize.x, y, 0.0, 1.0);
 }

@@ -64,7 +64,7 @@ void Background::shutdown() {
 }
 
 void Background::setImageSize(uint32_t width, uint32_t height) {
-  material_->setUniformAttribute("imageSize", glm::vec2(width, height));
+  material_->setUniformAttribute("viewportSize", glm::vec2(width, height));
 }
 
 void Background::setSymbolFlagBits(uint32_t bits) {

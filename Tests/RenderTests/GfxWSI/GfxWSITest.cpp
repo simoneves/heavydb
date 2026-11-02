@@ -235,7 +235,7 @@ class WSITestApp : public WSIAppBase {
   void handleWindowResizeEvent(const WSIWindowResizeEvent& event) {
     std::array<float, 2> dimensions{static_cast<float>(event.width()),
                                     static_cast<float>(event.height())};
-    material_->setUniformAttribute("imageSize", dimensions);
+    material_->setUniformAttribute("viewportSize", dimensions);
   }
 
   void handleKeyboardEvent(const WSIKeyboardEvent& event) {
