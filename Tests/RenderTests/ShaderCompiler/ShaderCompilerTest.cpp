@@ -186,6 +186,26 @@ void expect_reflection_eq(const std::string& expected,
   }
 }
 
+// Goldens for the tests whose shaders are written inline, under Inline/Results, one
+// file per stage. They hold glslang's reflection of each stage, which Slang has to
+// reproduce: written while both compilers were built, so that Slang is still held to
+// glslang's answer once glslang is gone. --regenerate-reflect rewrites one from the
+// reference compiler only.
+void expect_inline_golden(const std::string& name,
+                          const std::string& actual,
+                          bool is_reference) {
+  std::string const pathname = std::string(RENDER_TESTS_PATH) +
+                               "ShaderCompiler/Inline/Results/" + name + ".reflect";
+  if (g_regenerate_reflect && is_reference) {
+    LOG(WARNING) << "Regenerating " << pathname;
+    write_to_file(pathname, false, [&](auto& file) { file << actual; });
+  }
+  auto const [read_ok, expected] = read_file(pathname);
+  ASSERT_TRUE(read_ok) << "Failed to read reflection file: " << pathname
+                       << "\nRun with --regenerate-reflect to create it.";
+  expect_reflection_eq(expected, actual, pathname);
+}
+
 // ItemInfo has no operator<<, so a direct EXPECT_EQ on it reports a hex blob.
 // Compare field by field instead, naming the field that differs.
 void expect_item_info_eq(const ShaderReflection::ItemInfo& actual,
@@ -1208,7 +1228,8 @@ void main() {
   auto const from_slang =
       reflect_with(slang, "arrayParity.comp", source, ShaderStage::kCompute);
   ASSERT_FALSE(from_glslang.empty());
-  EXPECT_EQ(from_glslang, from_slang);
+  expect_inline_golden("arrayParity.comp", from_glslang, true);
+  expect_inline_golden("arrayParity.comp", from_slang, false);
 }
 
 TEST_F(GeneralShaderCompilerTest, SlangUnusedResourcesTest) {
@@ -1273,9 +1294,11 @@ void main() {
       "unused.frag", source, "main", ShaderStage::kFragment}});
   ASSERT_FALSE(results.stages[0].first.empty()) << results.material_error;
   ASSERT_EQ(results.reflections.size(), size_t(1));
-  EXPECT_EQ(from_glslang,
-            reflection_to_string(results.reflections[0]) +
-                execution_modes(results.stages[0].first));
+  expect_inline_golden("layoutReflection.frag", from_glslang, true);
+  expect_inline_golden("layoutReflection.frag",
+                       reflection_to_string(results.reflections[0]) +
+                           execution_modes(results.stages[0].first),
+                       false);
 }
 
 TEST_F(GeneralShaderCompilerTest, SlangPushConstantOffsetTest) {
@@ -1306,9 +1329,11 @@ void main() {
       "offset.frag", source, "main", ShaderStage::kFragment}});
   ASSERT_FALSE(results.stages[0].first.empty()) << results.material_error;
   ASSERT_EQ(results.reflections.size(), size_t(1));
-  EXPECT_EQ(from_glslang,
-            reflection_to_string(results.reflections[0]) +
-                execution_modes(results.stages[0].first));
+  expect_inline_golden("pushConstantOffset.frag", from_glslang, true);
+  expect_inline_golden("pushConstantOffset.frag",
+                       reflection_to_string(results.reflections[0]) +
+                           execution_modes(results.stages[0].first),
+                       false);
 }
 
 TEST_F(GeneralShaderCompilerTest, CompilerBackendSelectionTest) {
@@ -1358,24 +1383,31 @@ TEST_F(GeneralShaderCompilerTest, SlangUnreachedMaterialsTest) {
                               std::string(RENDER_TESTS_PATH) + "GfxWSI/shaders/");
   // Each material's templates, and the tags its owner fills in all of them
   struct UnreachedMaterial {
+    std::string label;
     std::vector<std::string> names;
     std::vector<std::pair<std::string, std::string>> tags;
   };
   // clang-format off
   std::vector<UnreachedMaterial> const materials({
       // Need a second GPU
-      {{"Rendering/fullScreenTriangle.vert", "Rendering/accumulationCompositePeer.frag"}, {}},
-      {{"Rendering/multiGpuCompositeIDs.comp"},
+      {"peerAccumulation",
+       {"Rendering/fullScreenTriangle.vert", "Rendering/accumulationCompositePeer.frag"}, {}},
+      {"compositeIDs",
+       {"Rendering/multiGpuCompositeIDs.comp"},
        {{"numSamples", "1"}, {"doMultiSample", "0"}, {"workgroupSize", "32"}}},
-      {{"Rendering/multiGpuCompositeIDs.comp"},
+      {"compositeIDsMultisampled",
+       {"Rendering/multiGpuCompositeIDs.comp"},
        {{"numSamples", "4"}, {"doMultiSample", "1"}, {"workgroupSize", "32"}}},
       // A system table function's render test, which nothing here calls
-      {{"TableFunctions/tableFunctionTest.vert", "TableFunctions/tableFunctionTest.frag"}, {}},
+      {"tableFunction",
+       {"TableFunctions/tableFunctionTest.vert", "TableFunctions/tableFunctionTest.frag"}, {}},
       // Windowed: GfxWSITest is not built without a display, and the ImGui overlay is
       // only drawn there
-      {{"WSITests/fullScreenTriangle.vert", "WSITests/wsiTestGradient.frag"}, {}},
-      {{"WSITests/fullScreenTriangle.vert", "WSITests/background.frag"}, {}},
-      {{"ImGui/imgui_shader.vert", "ImGui/imgui_shader.frag"}, {}},
+      {"wsiGradient",
+       {"WSITests/fullScreenTriangle.vert", "WSITests/wsiTestGradient.frag"}, {}},
+      {"wsiBackground",
+       {"WSITests/fullScreenTriangle.vert", "WSITests/background.frag"}, {}},
+      {"imgui", {"ImGui/imgui_shader.vert", "ImGui/imgui_shader.frag"}, {}},
   });
   // clang-format on
   auto const build = [this](const UnreachedMaterial& material,
@@ -1405,11 +1437,15 @@ TEST_F(GeneralShaderCompilerTest, SlangUnreachedMaterialsTest) {
       EXPECT_EQ(spirv[2] >> 16, kSlangGenerator) << names[i];
       auto const [spirv_valid, validation_messages] = validate_spirv(spirv);
       EXPECT_TRUE(spirv_valid) << names[i] << ":\n" << validation_messages;
-      EXPECT_EQ(
-          reflection_to_string(by_glslang[i]->getReflection()) +
-              execution_modes(by_glslang[i]->getSpirv()),
-          reflection_to_string(by_slang[i]->getReflection()) + execution_modes(spirv))
-          << names[i];
+      auto const golden = material.label + "." + names[i].substr(names[i].find('/') + 1);
+      expect_inline_golden(golden,
+                           reflection_to_string(by_glslang[i]->getReflection()) +
+                               execution_modes(by_glslang[i]->getSpirv()),
+                           true);
+      expect_inline_golden(
+          golden,
+          reflection_to_string(by_slang[i]->getReflection()) + execution_modes(spirv),
+          false);
     }
   }
 }
@@ -1441,6 +1477,13 @@ TEST_F(GeneralShaderCompilerTest, SlangMaterialBindingTest) {
     }
     return reflections;
   };
+  auto const expect_material_golden = [](const std::string& name,
+                                         const std::vector<std::string>& reflections,
+                                         bool is_reference) {
+    ASSERT_EQ(reflections.size(), size_t(2));
+    expect_inline_golden(name + ".vert", reflections[0], is_reference);
+    expect_inline_golden(name + ".frag", reflections[1], is_reference);
+  };
   std::string const header = R"glsl(#version 460
 #extension GL_EXT_scalar_block_layout : require
 )glsl";
@@ -1464,7 +1507,9 @@ void main() {
   color = b + texture(tex, vec2(0.0));
 }
 )glsl";
-    EXPECT_EQ(reflect_material(glslang, vert, frag), reflect_material(slang, vert, frag));
+    expect_material_golden(
+        "bindingDistinct", reflect_material(glslang, vert, frag), true);
+    expect_material_golden("bindingDistinct", reflect_material(slang, vert, frag), false);
   }
 
   // A resource shared between the stages through an explicit binding
@@ -1490,7 +1535,8 @@ void main() {
   color = s + b;
 }
 )glsl";
-    EXPECT_EQ(reflect_material(glslang, vert, frag), reflect_material(slang, vert, frag));
+    expect_material_golden("bindingShared", reflect_material(glslang, vert, frag), true);
+    expect_material_golden("bindingShared", reflect_material(slang, vert, frag), false);
   }
 
   // A resource shared without an explicit binding gets one binding from glslang, which
