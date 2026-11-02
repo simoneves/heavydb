@@ -238,10 +238,6 @@ void PointMark::buildPipelineDescriptors() {
   }
 
   pipeline_descriptor_->setRasterSampleCount(getRasterizationSampleCount());
-
-  pipeline_descriptor_->getPushConstantRanges().clear();
-  pipeline_descriptor_->getPushConstantRanges().insert(
-      gfx::ShaderStageBits::kMesh, 0, sizeof(uint32_t));
 }
 
 void PointMark::buildPipelines(MarkPerGpuData& per_gpu_data) {

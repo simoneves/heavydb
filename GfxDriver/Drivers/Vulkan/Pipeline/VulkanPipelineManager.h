@@ -24,8 +24,8 @@ class VulkanPipelineManager {
   // Constructor
   // `specializations` vector declares all specialization constants in the pipeline
   // and will be translated and cached in specialization_map_
-  // `push_constant_ranges` declares the push constants to add to the pipeline
-  // which are translated and cached in push_constants_
+  // `push_constant_ranges` declares the push constants to add to the pipeline, as the
+  // material reflects them, which are translated and cached in push_constants_
   explicit VulkanPipelineManager(
       const DeviceContext& device_ctx,
       std::string_view name_base,

@@ -8,6 +8,7 @@
 #include <optional>
 #include <vector>
 
+#include "GfxDriver/Pipeline/PushConstantRanges.h"
 #include "GfxDriver/Resources/ResourcePtr.h"
 #include "GfxDriver/ShaderCompiler/ShaderManager.h"
 #include "GfxDriver/ShaderCompiler/ShaderReflection.h"
@@ -93,6 +94,13 @@ class Material {
   void validatePushConstantRange(std::string_view name,
                                  uint32_t offset,
                                  uint32_t num_bytes) const;
+
+  // The push constant ranges a pipeline layout for this material needs: one per stage
+  // that declares a push constant block, covering the span its members occupy, as
+  // reflected. Every pipeline takes its layout's ranges from here, so the shader and
+  // the layout cannot disagree. A pipeline's ranges are only its own stages', so a push
+  // constant does not carry over from one pipeline to another unless both declare it.
+  PushConstantRanges getPushConstantRanges() const;
 
   void setViewportAttributes(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
 

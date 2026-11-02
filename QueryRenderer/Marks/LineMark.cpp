@@ -219,9 +219,6 @@ void LineMark::buildPipelineDescriptors() {
   }
 
   pipeline_descriptor_->setRasterSampleCount(getRasterizationSampleCount());
-  pipeline_descriptor_->getPushConstantRanges().clear();
-  pipeline_descriptor_->getPushConstantRanges().insert(
-      ShaderStageBits::kVertex, 0, sizeof(uint32_t));
 }
 
 void LineMark::buildPipelines(MarkPerGpuData& per_gpu_data) {

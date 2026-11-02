@@ -175,10 +175,9 @@ class PPLLRender : private boost::noncopyable {
   // the first composite pass (that overflows)
   enum CompSpecialization { kDefaultComposite, kOverflowComposite };
 
-  // Push constants for capture and composite consisting of two uint32_t
-  // low uint is batch index offset, hi uint is tile index
+  // The capture shaders' push constants, two uint32_t: the vertex stage's batch index
+  // offset, then the tile index, which the fragment and composite stages read
   static const uint32_t kTileIndexPushConstantOffset{4};
-  static std::vector<gfx::PushConstantRange> capture_and_comp_push_constants;
 
   const DeviceContext& device_;
   PPLLResources& global_resources_;

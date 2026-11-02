@@ -407,10 +407,7 @@ struct ImportCudaBufferTestExecutor : public InteropTest {
         uint64_t qob_vulkan;
       };
 
-      // pipeline descriptor (push constants are the only addition)
       PipelineDescriptor pipeline_desc;
-      gfx::PushConstantRange pcr(gfx::ShaderStageBits::kVertex, 0, sizeof(PushConstants));
-      pipeline_desc.setPushConstantRanges({pcr});
 
       // pipeline
       auto pipeline = resource_mgr.createGraphicsPipeline(

@@ -169,8 +169,6 @@ SeparateMultiSamplesPass::SeparateMultiSamplesPass(const GlobalRenderContext& gl
     , initialized_{false} {
   pipeline_descriptor_ = std::make_unique<gfx::PipelineDescriptor>();
   pipeline_descriptor_->setEnableBlend(false);
-  pipeline_descriptor_->setPushConstantRanges(
-      {gfx::PushConstantRange{gfx::ShaderStageBits::kFragment, 0, sizeof(uint32_t)}});
 }
 
 SeparateMultiSamplesPass::~SeparateMultiSamplesPass() {

@@ -24,7 +24,6 @@ CreateComputePassResult create_compute_pass(
     const std::string& shader_template,
     const std::string& resource_name,
     const BuilderCallback builder_cb = nullptr,
-    const std::vector<SpecializationMapEntry>& specializations = {},
-    const PushConstantRanges& push_constant_ranges = {});
+    const std::vector<SpecializationMapEntry>& specializations = {});
 
 }  // namespace gfx

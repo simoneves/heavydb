@@ -365,15 +365,6 @@ void PolyMark::updateShader() {
   setPropsDirty();
 }
 
-gfx::PushConstantRanges PolyMark::capture_and_comp_push_constants = {
-    // batch offset push constant, offset = 0, size = 4
-    gfx::PushConstantRange(gfx::ShaderStageBits::kVertex, 0u, sizeof(uint32_t)),
-    // tile index push constant, offset = 4, size = 4
-    gfx::PushConstantRange(
-        gfx::ShaderStageBits::kFragment | gfx::ShaderStageBits::kCompute,
-        kTileIndexPushConstantOffset,
-        sizeof(uint32_t))};
-
 void PolyMark::buildPipelineDescriptors() {
   if (!pipeline_descriptors_[kCountFragmentsPipeline]) {
     CHECK(!pipeline_descriptors_[kCaptureFragmentsPipeline]);
@@ -382,8 +373,6 @@ void PolyMark::buildPipelineDescriptors() {
         std::make_unique<gfx::PipelineDescriptor>();
     pipeline_descriptors_[kCaptureFragmentsPipeline] =
         std::make_unique<gfx::PipelineDescriptor>();
-    pipeline_descriptors_[kCaptureFragmentsPipeline]->setPushConstantRanges(
-        capture_and_comp_push_constants);
     pipeline_descriptors_[kOutlinePipeline] = std::make_unique<gfx::PipelineDescriptor>();
     CHECK(pipeline_descriptors_[kCountFragmentsPipeline]);
     CHECK(pipeline_descriptors_[kCaptureFragmentsPipeline]);
@@ -400,9 +389,6 @@ void PolyMark::buildPipelineDescriptors() {
   //
   pipeline_descriptors_[kOutlinePipeline]->setRasterSampleCount(num_samples);
   pipeline_descriptors_[kOutlinePipeline]->setEnableDepthTest(true);
-  pipeline_descriptors_[kOutlinePipeline]->getPushConstantRanges().clear();
-  pipeline_descriptors_[kOutlinePipeline]->getPushConstantRanges().insert(
-      ShaderStageBits::kVertex, 0, sizeof(uint32_t));
 }
 
 void PolyMark::buildPipelines(MarkPerGpuData& per_gpu_data) {
@@ -442,8 +428,7 @@ void PolyMark::buildPipelines(MarkPerGpuData& per_gpu_data) {
         resource_mgr.createComputePipeline(
             "PolyMark Composite Fragments",
             *per_gpu_data.fill_materials[kCompositeFragmentsMaterial],
-            spec_map,
-            capture_and_comp_push_constants);
+            spec_map);
     // create default specialization (DEFAULT_MAX_UNIQUE_IDS)
     per_gpu_data.compute_pipelines[kCompositeFragmentsPipeline]->create();
 

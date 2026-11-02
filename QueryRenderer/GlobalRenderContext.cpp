@@ -368,44 +368,33 @@ void GlobalRenderContext::initCachesAndResources(
     //
     // PPLL material and pipeline resources
     //
-    auto create_ppll_resources = [&](auto name,
-                                     auto shader_caches,
-                                     int num_push_constants) {
+    auto create_ppll_resources = [&](auto name, auto shader_caches) {
       gfx::PPLLResources::PipelineResources resources;
       resources.material = rsrc_mgr.createMaterial(name, shader_caches);
-      gfx::PushConstantRanges ranges{gfx::PushConstantRange(
-          gfx::ShaderStageBits::kCompute, 0, sizeof(uint32_t) * num_push_constants)};
-      if (num_push_constants) {
-        resources.pipeline =
-            rsrc_mgr.createComputePipeline(name, *resources.material, {}, ranges);
-      } else {
-        resources.pipeline = rsrc_mgr.createComputePipeline(name, *resources.material);
-      }
+      resources.pipeline = rsrc_mgr.createComputePipeline(name, *resources.material);
       resources.pipeline->create();
       return resources;
     };
 
     // Stats
-    auto stats_resources =
-        create_ppll_resources("PPLL Fragment Stats", ppll_stats_cache, 0);
+    auto stats_resources = create_ppll_resources("PPLL Fragment Stats", ppll_stats_cache);
 
     // Stats tiled
     auto stats_tiled_resources =
-        create_ppll_resources("PPLL Fragment Tile Stats", ppll_tile_stats_cache, 2);
+        create_ppll_resources("PPLL Fragment Tile Stats", ppll_tile_stats_cache);
 
     // Stats tiled and batched - stage 1
     auto stats_tiled_and_batched_stage_1_resources = create_ppll_resources(
-        "PPLL Fragment Tiled Batched Stats - Stage 1", ppll_stats_tiled_batches_cache, 2);
+        "PPLL Fragment Tiled Batched Stats - Stage 1", ppll_stats_tiled_batches_cache);
 
     // Stats tiled and batched - stage 2
     auto stats_tiled_and_batched_stage_2_resources =
         create_ppll_resources("PPLL Fragment Tiled Batched Stats - Stage 2",
-                              ppll_stats_max_fragments_per_pixel_cache,
-                              1);
+                              ppll_stats_max_fragments_per_pixel_cache);
 
     // Debug visualization
     auto debug_viz_resources =
-        create_ppll_resources("PPLL Debug Viz", ppll_debug_viz_cache, 0);
+        create_ppll_resources("PPLL Debug Viz", ppll_debug_viz_cache);
 
     gpu_data->ppll_resources_ = std::make_unique<gfx::PPLLResources>(
         device_context,

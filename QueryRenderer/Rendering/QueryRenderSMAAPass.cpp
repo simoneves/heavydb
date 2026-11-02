@@ -260,8 +260,6 @@ QueryRenderSMAAPass::QueryRenderSMAAPass(const GlobalRenderContext& global_ctx,
 
   blending_weight_pipeline_descriptor_ = std::make_unique<gfx::PipelineDescriptor>();
   blending_weight_pipeline_descriptor_->setEnableBlend(false);
-  blending_weight_pipeline_descriptor_->setPushConstantRanges(
-      {gfx::PushConstantRange{gfx::ShaderStageBits::kFragment, 0, sizeof(uint32_t)}});
 
   neighborhood_blend_first_pipeline_descriptor_ =
       std::make_unique<gfx::PipelineDescriptor>();
