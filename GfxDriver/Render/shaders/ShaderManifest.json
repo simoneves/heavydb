@@ -129,7 +129,8 @@
       "file_path": ".//PPLL/",
       "internal_path": "PPLL/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "rtIntersection.glsl",

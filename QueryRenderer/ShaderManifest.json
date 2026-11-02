@@ -135,14 +135,16 @@
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "mesh2dTemplate.frag",
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "coordConvertSubroutines.glsl",
@@ -178,35 +180,40 @@
       "file_path": "./Scales/shaders",
       "internal_path": "Scales/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "ordinalScaleTemplate.vert",
       "file_path": "./Scales/shaders",
       "internal_path": "Scales/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "quantitativeScaleTemplate.vert",
       "file_path": "./Scales/shaders",
       "internal_path": "Scales/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "quantizeScaleTemplate.vert",
       "file_path": "./Scales/shaders",
       "internal_path": "Scales/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "thresholdScaleTemplate.vert",
       "file_path": "./Scales/shaders",
       "internal_path": "Scales/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "fullScreenTriangle.vert",
@@ -221,7 +228,8 @@
       "file_path": "./Rendering/shaders",
       "internal_path": "Rendering/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "SMAABlendingWeightCalculation.frag",
@@ -335,28 +343,32 @@
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "ppllPolyTemplate_capture.vert",
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "ppllPolyTemplate_capture.frag",
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "ppllPolyTemplate_composite.comp",
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "compute"
+      "class": "compute",
+      "slang": true
     },
     {
       "filename": "geoCount_count.comp",
