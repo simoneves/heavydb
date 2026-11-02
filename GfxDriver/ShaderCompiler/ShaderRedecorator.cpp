@@ -137,17 +137,28 @@ void ShaderRedecorator::redecorateInternal(const spirv_t& spirv,
   // says which compiler produced it.
   bool const from_slang = spirv.size() > 2 && (spirv[2] >> 16) == kSlangSpirvGeneratorId;
   auto const canonical_name = [from_slang](std::string name) {
-    constexpr std::string_view kPrefix = "SLANG_ParameterGroup_";
-    if (!from_slang || name.rfind(kPrefix, 0) != 0) {
+    if (!from_slang) {
       return name;
     }
-    name.erase(0, kPrefix.size());
-    for (std::string_view suffix : {"_std430", "_std140", "_scalar"}) {
+    auto const strip_suffix = [&name](std::string_view suffix) {
       if (name.size() > suffix.size() &&
           name.compare(name.size() - suffix.size(), suffix.size(), suffix) == 0) {
         name.erase(name.size() - suffix.size());
-        break;
+        return true;
       }
+      return false;
+    };
+    constexpr std::string_view kPrefix = "SLANG_ParameterGroup_";
+    if (name.rfind(kPrefix, 0) == 0) {
+      name.erase(0, kPrefix.size());
+      for (std::string_view suffix : {"_std430", "_std140", "_scalar", "_natural"}) {
+        if (strip_suffix(suffix)) {
+          break;
+        }
+      }
+    } else {
+      // A scalar storage block can be named <block>_natural, with no prefix
+      strip_suffix("_natural");
     }
     return name;
   };

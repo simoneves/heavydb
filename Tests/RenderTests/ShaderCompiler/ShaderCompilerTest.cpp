@@ -1134,7 +1134,8 @@ TEST_F(GeneralShaderCompilerTest, SlangReflectionParityTest) {
   // array inside a struct, the PBR shaders' MaterialProperties.pad, is wrapped too.
   // ALIGN_SSBO is laid out by std430 alignment, which Slang's reflection API does not
   // apply: aligned has to start at 16, and Light, as the PBR shaders' light array,
-  // takes a stride of 32 rather than its unpadded 20.
+  // takes a stride of 32 rather than its unpadded 20. Slang names a scalar storage
+  // block's type differently again, and SCALAR_SSBO has to keep its name.
   std::string const source = R"glsl(#version 460
 #extension GL_EXT_shader_explicit_arithmetic_types : enable
 #extension GL_EXT_scalar_block_layout : require
@@ -1169,10 +1170,14 @@ layout(std430, binding = 2) buffer ALIGN_SSBO {
   vec4 aligned;
   Light lights[];
 };
+layout(scalar, binding = 3) buffer SCALAR_SSBO {
+  vec3 positions[];
+};
 void main() {
   tiles[1].x = int(colors[2].x + scalar + transform[2][1] + after_transform);
   batch_stats[1][3].max_count = 7u;
   lights[2].color = aligned * lone;
+  positions[1] = aligned.xyz;
 }
 )glsl";
 
