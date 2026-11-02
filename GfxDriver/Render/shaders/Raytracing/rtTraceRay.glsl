@@ -6,9 +6,8 @@
 // Slang's GLSL traceRayEXT does not compile: Slang aborts with an internal error in
 // emitSPIRVAsm. Its own TraceRay does, given the payload variable rather than the
 // payload's location, and copies the payload in and out around the trace. A shader that
-// traces rays defines traceRayEXT in terms of SLANG_TRACE_RAY under __SLANG__, naming
-// its payload, so that its body is the same for both compilers.
-#ifdef __SLANG__
+// traces rays defines traceRayEXT in terms of SLANG_TRACE_RAY, naming its payload, so
+// that its body can keep calling traceRayEXT.
 #define SLANG_TRACE_RAY(payload,                                                       \
                         acceleration_structure,                                        \
                         ray_flags,                                                     \
@@ -35,4 +34,3 @@
              trace_ray_desc_,                                                          \
              payload);                                                                 \
   }
-#endif

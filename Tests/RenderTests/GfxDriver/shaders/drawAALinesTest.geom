@@ -4,10 +4,6 @@
  */
 
 
-#ifndef __SLANG__
-layout(lines_adjacency) in;
-layout(triangle_strip, max_vertices = 8) out;
-#endif
 
 #define LINE_JOIN_BEVEL 0
 #define LINE_JOIN_ROUND 1
@@ -15,7 +11,6 @@ layout(triangle_strip, max_vertices = 8) out;
 
 #define NO_DIST_COORDS vec2(0.0)
 
-#ifdef __SLANG__
 // See Slang/slangGeometry.glsl
 struct GeometryIn {
   float4 gl_Position : SV_Position;
@@ -37,19 +32,6 @@ struct GeometryOut {
 #define SLANG_GEOMETRY_IN_COUNT 4
 #define SLANG_GEOMETRY_OUT GeometryOut
 #define SLANG_GEOMETRY_OUT_MEMBERS GeometryOut_MEMBERS
-#else
-// start input data
-layout(location = 0) in vec4 gColor[];
-layout(location = 1) in float gStrokeWidth[];
-layout(location = 2) in int gLineJoin[];
-layout(location = 3) in float gMiterLimit[];
-// end input data
-
-// start output data
-layout(location = 0) out vec2 fNormDistCoords;
-layout(location = 1) flat out vec4 fColor;
-// end output data
-#endif
 #include "Slang/slangGeometry.glsl"
 
 void emitVertex(
@@ -210,14 +192,8 @@ void geometry_main(SLANG_GEOMETRY_STREAM) {
     SLANG_GEOMETRY_STREAM_EXTRA_ARG);
 }
 
-#ifdef __SLANG__
 [maxvertexcount(8)]
 void main(lineadj GeometryIn slang_geometry_input_[4], SLANG_GEOMETRY_STREAM) {
   SLANG_GEOMETRY_LOAD_INPUTS();
   geometry_main(SLANG_GEOMETRY_STREAM_ARG);
 }
-#else
-void main() {
-  geometry_main();
-}
-#endif

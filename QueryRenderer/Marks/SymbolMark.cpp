@@ -694,14 +694,10 @@ void SymbolMark::updateShader() {
 
       stroke_vert_builder->replaceFirstTag(
           "GeometryShaderInputs", geometry_inputs.createInterfaceBlockString(true, {}));
-      stroke_geom_builder->replaceFirstTag(
-          "GeometryShaderInputs",
-          geometry_inputs.createInterfaceBlockString(true, std::nullopt, true));
 
       auto fragment_inputs_str = fragment_inputs.createInterfaceBlockString(true);
-      stroke_geom_builder->replaceFirstTag("FragmentShaderInputs", fragment_inputs_str);
       stroke_frag_builder->replaceFirstTag("FragmentShaderInputs", fragment_inputs_str);
-      // The geometry shader's Slang form of both
+      // The geometry shader's form of both, as Slang declares them
       stroke_geom_builder->replaceFirstTag("GeometryShaderInputsSlang",
                                            geometry_inputs.createSlangStructString(true));
       stroke_geom_builder->replaceFirstTag("FragmentShaderInputsSlang",

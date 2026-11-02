@@ -3,9 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef __SLANG__
-#extension GL_EXT_mesh_shader : enable
-#endif
 #include "Slang/slangMesh.glsl"
 
 #include "DriverTests/testUtils.glsl"
@@ -13,35 +10,20 @@
 #define NUM_QUADS <numQuads>
 #define NUM_TASKS <numTasks>
 
-#ifndef __SLANG__
-layout (local_size_x = NUM_TASKS, local_size_y = 1, local_size_z = 1) in;
-layout (triangles, max_vertices = NUM_QUADS * 4, max_primitives = NUM_QUADS * 2) out;
-#endif
-
-#ifdef __SLANG__
 // See Slang/slangMesh.glsl
 struct PerVertexData {
   float4 gl_Position : SV_Position;
   [[vk::location(0)]] vec4 color;
 };
 #define v_out slang_mesh_vertices_
-#else
-layout (location = 0) out PerVertexData {
-  vec4 color;
-} v_out[];
-#endif
 
 layout(std430) uniform MESH_SHADER_UBO_TYPE {
   vec2 viewportSize;
 };
 
-#ifdef __SLANG__
 [outputtopology("triangle")]
 [numthreads(NUM_TASKS, 1, 1)]
 void main(SLANG_MESH_OUTPUTS(PerVertexData, NUM_QUADS * 4, uint3, NUM_QUADS * 2))
-#else
-void main()
-#endif
 {
   uint workgroup_id = gl_WorkGroupID.x;
 

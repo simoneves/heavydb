@@ -8,16 +8,16 @@
 // Slang's GLSL support has no geometry shader I/O: no layout(points) in or
 // layout(triangle_strip) out, no unsized input arrays, no EmitVertex. Slang's own form
 // is an entry point taking the input primitive as an array of structs and an output
-// stream, appending output structs to the stream. Under __SLANG__ this declares the
+// stream, appending output structs to the stream. This declares the
 // inputs and outputs as the globals the GLSL body reads and writes, gl_in included, and
 // defines EmitVertex and EndPrimitive in terms of the stream.
 //
 // The stream has to reach every function that emits a vertex, so a function that does
 // declares SLANG_GEOMETRY_STREAM as its sole parameter, or SLANG_GEOMETRY_STREAM_EXTRA
 // after its others, and its callers pass SLANG_GEOMETRY_STREAM_ARG or
-// SLANG_GEOMETRY_STREAM_EXTRA_ARG. Each expands to nothing for glslang.
+// SLANG_GEOMETRY_STREAM_EXTRA_ARG.
 //
-// Before including this, a shader defines under __SLANG__:
+// Before including this, a shader defines:
 //   SLANG_GEOMETRY_IN            the struct of one input vertex, which leads with
 //                                gl_Position as SV_Position and then has the varyings
 //   SLANG_GEOMETRY_IN_MEMBERS(X) X(type, name) for each of those varyings
@@ -26,8 +26,6 @@
 // GlslStructBuilder::createSlangStructString writes the structs and the member lists.
 // Its entry point, main, then calls SLANG_GEOMETRY_LOAD_INPUTS() before anything else,
 // naming its input array slang_geometry_input_ and its stream SLANG_GEOMETRY_STREAM.
-
-#ifdef __SLANG__
 
 #define SLANG_GEOMETRY_DECLARE_IN_(type, name) static type name[SLANG_GEOMETRY_IN_COUNT];
 SLANG_GEOMETRY_IN_MEMBERS(SLANG_GEOMETRY_DECLARE_IN_)
@@ -66,11 +64,3 @@ SLANG_GEOMETRY_OUT_MEMBERS(SLANG_GEOMETRY_DECLARE_OUT_)
 #define SLANG_GEOMETRY_STREAM_ARG slang_geometry_stream_
 #define SLANG_GEOMETRY_STREAM_EXTRA_ARG , slang_geometry_stream_
 
-#else
-
-#define SLANG_GEOMETRY_STREAM
-#define SLANG_GEOMETRY_STREAM_EXTRA
-#define SLANG_GEOMETRY_STREAM_ARG
-#define SLANG_GEOMETRY_STREAM_EXTRA_ARG
-
-#endif

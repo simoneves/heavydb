@@ -99,8 +99,7 @@ std::string GlslStructBuilder::createStructString() const {
 
 std::string GlslStructBuilder::createInterfaceBlockString(
     bool do_auto_locations,
-    std::optional<locations_ref_type> reserved_locations,
-    bool is_geometry_shader) const {
+    std::optional<locations_ref_type> reserved_locations) const {
   CHECK(!member_vector_.empty());
   std::stringstream ss;
   int location = 0;
@@ -111,19 +110,15 @@ std::string GlslStructBuilder::createInterfaceBlockString(
   // The qualifier follows the in or out the shader template writes before the block,
   // which GLSL 4.6 allows. Otherwise each member keeps a location of its own.
   bool const locate_block =
-      do_auto_locations && !reserved_locations && !is_geometry_shader &&
+      do_auto_locations && !reserved_locations &&
       std::all_of(member_vector_.begin(), member_vector_.end(), [](auto const& info) {
         return !info.is_array && locations_occupied(info.type) == 1;
       });
 
-  // Geometry shaders do not allow anonymous interface blocks due to
-  // the unsized array syntax required, so skip outer bracing
-  if (!is_geometry_shader) {
-    if (locate_block) {
-      ss << "layout (location = 0) ";
-    }
-    ss << name_ << " {";
+  if (locate_block) {
+    ss << "layout (location = 0) ";
   }
+  ss << name_ << " {";
 
   // Write individual member decls
   for (auto const& info : member_vector_) {
@@ -145,34 +140,17 @@ std::string GlslStructBuilder::createInterfaceBlockString(
       ss << qualifier << " ";
     }
 
-    // Geometry shaders require the 'in' prefix for each member
-    // as our shader template need to be modified to use the in[N].member_name
-    // form
-    if (is_geometry_shader) {
-      ss << " in ";
-    }
-
     // Add the glsl type
     ss << to_string_glsl_decl(info.type) << " " << info.name;
 
-    CHECK_EQ(is_geometry_shader && info.is_array, false)
-        << "Geometry shader inputs cannot be sized arrays";
-
-    if (is_geometry_shader) {
-      // Add unsized array decorator for geometry inputs
-      ss << "[]";
-    } else if (info.is_array) {
-      // Or add a sized array if specified
+    if (info.is_array) {
       ss << "[" << info.array_size << "]";
     }
     // end of item declaration
     ss << ";";
   }
 
-  // Geometry inputs are not in a block
-  if (!is_geometry_shader) {
-    ss << "\n}";
-  }
+  ss << "\n}";
   return ss.str();
 }
 

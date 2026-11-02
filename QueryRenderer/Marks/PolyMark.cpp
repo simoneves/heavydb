@@ -327,18 +327,14 @@ void PolyMark::updateShader() {
     gfx::GlslStructBuilder fragment_inputs("FragmentShaderInputs");
     generate_line_interface_blocks(geometry_inputs, fragment_inputs, hasAccumulator());
 
-    // Write geometry shader inputs to vertex and geometry shaders
+    // Write geometry shader inputs to the vertex shader
     line_builders[0]->replaceFirstTag("GeometryShaderInputs",
                                       geometry_inputs.createInterfaceBlockString(true));
-    line_builders[2]->replaceFirstTag(
-        "GeometryShaderInputs",
-        geometry_inputs.createInterfaceBlockString(true, std::nullopt, true));
 
-    // Write fragment shader inputs to geometry and fragment shaders
+    // Write fragment shader inputs to the fragment shader
     auto fragment_inputs_str = fragment_inputs.createInterfaceBlockString(true);
     line_builders[1]->replaceFirstTag("FragmentShaderInputs", fragment_inputs_str);
-    line_builders[2]->replaceFirstTag("FragmentShaderInputs", fragment_inputs_str);
-    // The geometry shader's Slang form of both
+    // The geometry shader's form of both, as Slang declares them
     line_builders[2]->replaceFirstTag("GeometryShaderInputsSlang",
                                       geometry_inputs.createSlangStructString(true));
     line_builders[2]->replaceFirstTag("FragmentShaderInputsSlang",

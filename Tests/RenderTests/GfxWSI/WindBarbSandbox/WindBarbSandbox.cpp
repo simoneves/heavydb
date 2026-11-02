@@ -153,13 +153,14 @@ void WindBarbSandbox::initMaterialsAndPipelines() {
 
     builders[0]->replaceFirstTag("GeometryShaderInputs",
                                  geometry_inputs.createInterfaceBlockString(true));
-    builders[2]->replaceFirstTag(
-        "GeometryShaderInputs",
-        geometry_inputs.createInterfaceBlockString(true, std::nullopt, true));
 
     auto fragment_inputs_str = fragment_inputs.createInterfaceBlockString(true);
     builders[1]->replaceFirstTag("FragmentShaderInputs", fragment_inputs_str);
-    builders[2]->replaceFirstTag("FragmentShaderInputs", fragment_inputs_str);
+    // The geometry shader's form of both, as Slang declares them
+    builders[2]->replaceFirstTag("GeometryShaderInputsSlang",
+                                 geometry_inputs.createSlangStructString(true));
+    builders[2]->replaceFirstTag("FragmentShaderInputsSlang",
+                                 fragment_inputs.createSlangStructString(true));
 
     auto spirv_caches = shader_mgr.createCacheVector(std::move(builders), true);
 
@@ -186,13 +187,14 @@ void WindBarbSandbox::initMaterialsAndPipelines() {
 
     builders[0]->replaceFirstTag("GeometryShaderInputs",
                                  geometry_inputs.createInterfaceBlockString(true));
-    builders[2]->replaceFirstTag(
-        "GeometryShaderInputs",
-        geometry_inputs.createInterfaceBlockString(true, std::nullopt, true));
 
     auto fragment_inputs_str = fragment_inputs.createInterfaceBlockString(true);
     builders[1]->replaceFirstTag("FragmentShaderInputs", fragment_inputs_str);
-    builders[2]->replaceFirstTag("FragmentShaderInputs", fragment_inputs_str);
+    // The geometry shader's form of both, as Slang declares them
+    builders[2]->replaceFirstTag("GeometryShaderInputsSlang",
+                                 geometry_inputs.createSlangStructString(true));
+    builders[2]->replaceFirstTag("FragmentShaderInputsSlang",
+                                 fragment_inputs.createSlangStructString(true));
 
     auto spirv_caches = shader_mgr.createCacheVector(std::move(builders), true);
 

@@ -35,11 +35,7 @@ uniform sampler2DArray frag_array_of_sampler_arrays[2];
 // covers each form. Its range also differs from the vert's, which is the shape a real
 // material has when two stages split one push constant budget between them.
 layout(push_constant) uniform FRAG_PUSH_CONSTANTS {
-#ifdef __SLANG__
   [[vk::offset(16)]] uint frag_item_index;
-#else
-  layout(offset = 16) uint frag_item_index;
-#endif
 };
 
 layout(location = 0) in float in_depth;

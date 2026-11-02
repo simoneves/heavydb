@@ -36,11 +36,7 @@ uniform sampler2DMS colorTex;
 void main(void)
 {
   ivec2 coord = ivec2(gl_FragCoord.xy);
-#ifdef __SLANG__
   // Slang's GLSL texelFetch on a multisampled texture drops the sample index and reads
   // sample 0. Its own multisampled load takes the index explicitly.
   colorSample = colorTex.Load(coord, int(pushConstants.sampleIndex));
-#else
-  colorSample = texelFetch(colorTex, coord, int(pushConstants.sampleIndex));
-#endif
 }

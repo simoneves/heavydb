@@ -6,9 +6,6 @@
 //<extensions>
 #extension GL_EXT_ray_tracing : require
 #extension GL_EXT_scalar_block_layout : enable
-#ifndef __SLANG__
-#extension GL_EXT_buffer_reference2 : require
-#endif
 //</extensions>
 
 //<includes>
@@ -37,10 +34,9 @@ struct MeshObjectDesc {
 };
 
 // Declare buffer_reference layouts required for proper element strides
-// Slang has no buffer_reference. Under __SLANG__ each reference type is a struct
-// holding a pointer to the same physical storage buffer address, so that
-// Type(address).member[i] reads the same way in either form.
-#ifdef __SLANG__
+// Slang has no buffer_reference, so each reference type is a struct holding a pointer
+// to the physical storage buffer address, which Type(address).member[i] reads as
+// buffer_reference would.
 struct Vertices {
   Vertex* v;
   __init(uint64_t address) { v = (Vertex*)address; }
@@ -65,26 +61,6 @@ struct Colors {
   vec3* c;
   __init(uint64_t address) { c = (vec3*)address; }
 };
-#else
-layout(buffer_reference, scalar) buffer Vertices {
-  Vertex v[];
-};
-layout(buffer_reference, scalar) buffer Indices {
-  ivec3 i[];
-};
-layout(buffer_reference, scalar) buffer ModelTransforms {
-  mat4 mm[];
-};
-layout(buffer_reference, scalar) buffer NormalTransforms {
-  mat3 nm[];
-};
-layout(buffer_reference, scalar) buffer MeshObjectDescs {
-  MeshObjectDesc od[];
-};
-layout(buffer_reference, scalar) buffer Colors {
-  vec3 c[];
-};
-#endif
 
 // MeshObjectDesc and Colors buffers addresses are passed using push constants for
 // more flexibility

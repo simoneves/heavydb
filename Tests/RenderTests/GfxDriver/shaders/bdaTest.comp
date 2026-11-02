@@ -3,20 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef __SLANG__
-#extension GL_EXT_buffer_reference2 : require
-#endif
-
 #define WIDTH 100
 #define HEIGHT 1
 #define WORKGROUP_SIZE 32
 
 layout (local_size_x = WORKGROUP_SIZE, local_size_y = WORKGROUP_SIZE, local_size_z = 1) in;
 
-// Slang has no buffer_reference. Under __SLANG__ each reference type is a struct
-// holding a pointer to the same physical storage buffer address, so that
-// Type(address).member[i] reads and writes the same way in either form.
-#ifdef __SLANG__
+// Slang has no buffer_reference, so each reference type is a struct holding a pointer
+// to the physical storage buffer address, which Type(address).member[i] reads and
+// writes as buffer_reference would.
 struct BufferPointer {
   uint64_t* p;
   __init(uint64_t address) { p = (uint64_t*)address; }
@@ -29,17 +24,6 @@ struct BufferDouble {
   double* d;
   __init(uint64_t address) { d = (double*)address; }
 };
-#else
-layout(buffer_reference, std430, buffer_reference_align = 4) buffer BufferPointer {
-  uint64_t p[];
-};
-layout(buffer_reference, std430, buffer_reference_align = 4) buffer BufferInt64 {
-  int64_t i[];
-};
-layout(buffer_reference, std430, buffer_reference_align = 4) buffer BufferDouble {
-  double d[];
-};
-#endif
 
 layout(push_constant, std430) uniform Registers
 {

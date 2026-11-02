@@ -20,10 +20,6 @@ bool trace_shadow_ray(vec3 P, vec3 L, float tmin, float tmax) {
 	is_shadowed = true; // start shadowed, miss shader will flip
 
 	uint ray_flags = gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT;
-#ifdef __SLANG__
 	SLANG_TRACE_RAY(is_shadowed, topLevelAS, ray_flags, 0xFF, 0, 0, 1, P, tmin, L, tmax);
-#else
-	traceRayEXT(topLevelAS, ray_flags, 0xFF, 0, 0, 1, P, tmin, L, tmax, 1);
-#endif
   return is_shadowed;
 }

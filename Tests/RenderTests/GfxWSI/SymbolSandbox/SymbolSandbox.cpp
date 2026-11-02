@@ -222,16 +222,16 @@ void SymbolSandbox::initMaterialsAndPipelines() {
     generate_fast_symbol_interface_blocks(
         fragment_inputs, geometry_inputs, false, false, false);
 
-    builders[0]->replaceFirstTag(
-        "GeometryShaderInputs",
-        geometry_inputs->createInterfaceBlockString(true, std::nullopt, false));
-    builders[2]->replaceFirstTag(
-        "GeometryShaderInputs",
-        geometry_inputs->createInterfaceBlockString(true, std::nullopt, true));
+    builders[0]->replaceFirstTag("GeometryShaderInputs",
+                                 geometry_inputs->createInterfaceBlockString(true));
 
     auto fragment_inputs_str = fragment_inputs.createInterfaceBlockString(true);
     builders[1]->replaceFirstTag("FragmentShaderInputs", fragment_inputs_str);
-    builders[2]->replaceFirstTag("FragmentShaderInputs", fragment_inputs_str);
+    // The geometry shader's form of both, as Slang declares them
+    builders[2]->replaceFirstTag("GeometryShaderInputsSlang",
+                                 geometry_inputs->createSlangStructString(true));
+    builders[2]->replaceFirstTag("FragmentShaderInputsSlang",
+                                 fragment_inputs.createSlangStructString(true));
 
     inject_into_vertex_shader(*builders[0],
                               type_info_ss,

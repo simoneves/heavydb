@@ -36,16 +36,10 @@ layout(std430) uniform COUNT_UBO {
 
 // Slang has no buffer_reference, and reads the same physical storage buffer address
 // through a pointer, so QOB_DATA(address).items[i] is the same in either form
-#ifdef __SLANG__
 struct QOB_DATA {
   uint64_t* items;
   __init(uint64_t address) { items = (uint64_t*)address; }
 };
-#else
-layout(buffer_reference, scalar, buffer_reference_align = 8) buffer QOB_DATA {
-  uint64_t items[];
-};
-#endif
 
 void main() {
   uint32_t row_index = gl_GlobalInvocationID.x;

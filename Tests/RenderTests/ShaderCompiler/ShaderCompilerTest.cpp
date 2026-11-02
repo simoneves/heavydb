@@ -417,10 +417,6 @@ TEST_F(GeneralShaderCompilerTest, InterfaceBlockLocationTest) {
   EXPECT_NE(wide_block.find("layout (location = 2) float fLast"), std::string::npos)
       << wide_block;
 
-  // Geometry inputs are loose variables, unchanged
-  auto const geometry = single.createInterfaceBlockString(true, std::nullopt, true);
-  EXPECT_NE(geometry.find("layout (location = 1)"), std::string::npos) << geometry;
-
   // The Slang struct, for geometry and mesh stages, gives each member the location the
   // block does, leads with the position, and lists the members for the shader to mirror
   auto const slang_struct = single.createSlangStructString(true);

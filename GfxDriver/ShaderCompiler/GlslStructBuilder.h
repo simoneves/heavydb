@@ -53,8 +53,7 @@ class GlslStructBuilder {
   using locations_ref_type = std::reference_wrapper<const std::set<int>>;
   std::string createInterfaceBlockString(
       bool do_auto_locations,
-      std::optional<locations_ref_type> reserved_locations = std::nullopt,
-      bool is_geometry_shader = false) const;
+      std::optional<locations_ref_type> reserved_locations = std::nullopt) const;
 
   // The same interface as a Slang struct, for the geometry and mesh stages, whose
   // inputs and outputs Slang's GLSL support does not model: they are entry point

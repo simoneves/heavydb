@@ -9,10 +9,10 @@
 // out, no gl_MeshVerticesEXT or primitive index arrays, no taskPayloadSharedEXT. Its own
 // form takes the output vertices and primitive indices as entry point parameters, and
 // the task payload as a groupshared variable in the task stage and an entry point
-// parameter in the mesh stage. Under __SLANG__ this maps the GLSL names onto those, so a
+// parameter in the mesh stage. This maps the GLSL names onto those, so a
 // body that writes its outputs in main, as every one here does, is unchanged.
 //
-// A mesh shader declares its main under __SLANG__ with the output topology and workgroup
+// A mesh shader declares its main with the output topology and workgroup
 // size as attributes and SLANG_MESH_OUTPUTS(vertex type, max vertices, index type, max
 // primitives) as its parameters, after the payload if it has one. The vertex type is a
 // struct leading with gl_Position as SV_Position, and gl_PointSize as SV_PointSize if
@@ -20,8 +20,6 @@
 // shader's own per-vertex output array is the same parameter, so it defines its name as
 // slang_mesh_vertices_. A task shader defines SLANG_TASK_PAYLOAD as its payload
 // variable, declared groupshared.
-
-#ifdef __SLANG__
 
 #define SetMeshOutputsEXT(vertex_count, primitive_count) \
   SetMeshOutputCounts(vertex_count, primitive_count)
@@ -35,4 +33,3 @@
   out vertices vertex_type slang_mesh_vertices_[max_vertices],                    \
       out indices index_type slang_mesh_indices_[max_primitives]
 
-#endif

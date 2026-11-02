@@ -19,12 +19,8 @@
 // float gStrokeOpacity[]
 // int gLineJoin[]
 // float gMiterLimit[]
-#ifdef __SLANG__
 // Slang's form of the inputs and outputs: see Slang/slangGeometry.glsl
 <GeometryShaderInputsSlang>
-#else
-<GeometryShaderInputs>
-#endif
 
 // Outputs
 
@@ -34,22 +30,13 @@
 // flat vec4 fColor
 // flat float fOpacity
 // flat float fStrokeOpacity
-#ifdef __SLANG__
 <FragmentShaderInputsSlang>
 #define SLANG_GEOMETRY_IN GeometryShaderInputs
 #define SLANG_GEOMETRY_IN_MEMBERS GeometryShaderInputs_MEMBERS
 #define SLANG_GEOMETRY_IN_COUNT 4
 #define SLANG_GEOMETRY_OUT FragmentShaderInputs
 #define SLANG_GEOMETRY_OUT_MEMBERS FragmentShaderInputs_MEMBERS
-#else
-out <FragmentShaderInputs>;
-#endif
 #include "Slang/slangGeometry.glsl"
-
-#ifndef __SLANG__
-layout(lines_adjacency) in;
-layout(triangle_strip, max_vertices = 4) out;
-#endif
 
 struct Viewport
 {
@@ -143,15 +130,9 @@ void geometry_main(SLANG_GEOMETRY_STREAM) {
   }
 }
 
-#ifdef __SLANG__
 [maxvertexcount(4)]
 void main(lineadj GeometryShaderInputs slang_geometry_input_[4],
           SLANG_GEOMETRY_STREAM) {
   SLANG_GEOMETRY_LOAD_INPUTS();
   geometry_main(SLANG_GEOMETRY_STREAM_ARG);
 }
-#else
-void main() {
-  geometry_main();
-}
-#endif
