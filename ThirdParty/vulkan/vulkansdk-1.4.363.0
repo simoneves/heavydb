@@ -24,7 +24,7 @@
 #    targets we build.
 #
 # 3. build_slang() builds Slang as a static library, so that it can be
-#    linked into the server as glslang is, without the debug info Slang
+#    linked into the server statically, without the debug info Slang
 #    otherwise compiles into Release builds (over a gigabyte in a static
 #    archive), and position-independent. It then merges into
 #    libslang-compiler.a the internal static libraries it depends on,
