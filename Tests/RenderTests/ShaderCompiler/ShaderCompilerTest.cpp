@@ -1477,6 +1477,75 @@ void main() {
   EXPECT_NE(vert_binding, 0);
 }
 
+TEST_F(GeneralShaderCompilerTest, SlangMaterialCacheTest) {
+  // A material compiled before is answered from the backend's cache, with the same
+  // SPIR-V and reflection, and only a material identical in every stage's source,
+  // entry point, stage and name counts as compiled before
+  SlangBackend slang(this->shaderMgr->getLibrary());
+  auto const source = [](int value) {
+    return std::string(R"glsl(#version 460
+layout(local_size_x = 1) in;
+layout(std430, binding = 0) buffer OUT_SSBO {
+  uint value;
+};
+void main() {
+  value = )glsl") +
+           std::to_string(value) + "u;\n}\n";
+  };
+  auto const compile = [&](int value, std::string const& name = "cache.comp") {
+    return slang.compileMaterial({ShaderCompilerBackend::StageSource{
+        name, source(value), "main", ShaderStage::kCompute}});
+  };
+
+  auto const first = compile(0);
+  ASSERT_FALSE(first.stages[0].first.empty()) << first.material_error;
+  ASSERT_EQ(first.reflections.size(), size_t(1));
+  EXPECT_EQ(slang.cacheHits(), size_t(0));
+  EXPECT_EQ(slang.cachedMaterials(), size_t(1));
+
+  auto const second = compile(0);
+  EXPECT_EQ(slang.cacheHits(), size_t(1));
+  EXPECT_EQ(second.stages[0].first, first.stages[0].first);
+  ASSERT_EQ(second.reflections.size(), size_t(1));
+  EXPECT_EQ(reflection_to_string(second.reflections[0]),
+            reflection_to_string(first.reflections[0]));
+
+  // A different source, and the same source under another name, are each their own
+  compile(1);
+  compile(0, "other.comp");
+  EXPECT_EQ(slang.cacheHits(), size_t(1));
+  EXPECT_EQ(slang.cachedMaterials(), size_t(3));
+
+  // A failure is not kept, so it is compiled, and reported, every time
+  for (int i = 0; i < 2; ++i) {
+    auto const failed = slang.compileMaterial({ShaderCompilerBackend::StageSource{
+        "broken.comp",
+        "#version 460\nvoid main() { undefinedFunction(); }\n",
+        "main",
+        ShaderStage::kCompute}});
+    EXPECT_TRUE(failed.stages[0].first.empty());
+    EXPECT_NE(failed.material_error.find("broken.comp"), std::string::npos)
+        << failed.material_error;
+  }
+  EXPECT_EQ(slang.cacheHits(), size_t(1));
+  EXPECT_EQ(slang.cachedMaterials(), size_t(3));
+
+  // Full, the cache drops the least recently used. Material 0 was used last of the
+  // three, so material 1 is the oldest when one more arrives.
+  compile(0);
+  EXPECT_EQ(slang.cacheHits(), size_t(2));
+  int value = 2;
+  while (slang.cachedMaterials() < SlangBackend::kMaxCachedMaterials) {
+    ASSERT_FALSE(compile(value++).stages[0].first.empty());
+  }
+  compile(value);
+  EXPECT_EQ(slang.cachedMaterials(), SlangBackend::kMaxCachedMaterials);
+  compile(0);
+  EXPECT_EQ(slang.cacheHits(), size_t(3)) << "material 0 should have been kept";
+  compile(1);
+  EXPECT_EQ(slang.cacheHits(), size_t(3)) << "material 1 should have been dropped";
+}
+
 // A benchmark rather than a test, so disabled: run it with
 // --gtest_also_run_disabled_tests --gtest_filter=*SlangCompileTime* to measure the cost
 // of compiling assembled GLSL through Slang. Materials are compiled at render time, so
