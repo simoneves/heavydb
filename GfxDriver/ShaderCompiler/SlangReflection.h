@@ -32,9 +32,14 @@ namespace gfx {
 // storage blocks, arrays of arrays flattened to element count and stride, a push
 // constant block's span and both of its names, and the scalar type whitelist. Throws
 // on anything it cannot represent, and on a binding clash anywhere in the material.
+//
+// `from_spirv` is each stage's reflection read from its SPIR-V. The layout is
+// authoritative except for push constant member offsets, which it gets wrong for a
+// member placed with [[vk::offset]], and which are taken from the SPIR-V instead.
 std::vector<ShaderReflection> reflect_slang_material(
     slang::ICompileRequest& request,
-    const std::vector<ShaderCompilerBackend::StageSource>& stages);
+    const std::vector<ShaderCompilerBackend::StageSource>& stages,
+    const std::vector<ShaderReflection>& from_spirv);
 
 // Describes how a reflection built from the layout disagrees with one read from the
 // same stage's SPIR-V, or returns an empty string if it does not. Every item the SPIR-V

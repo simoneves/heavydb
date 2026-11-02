@@ -253,6 +253,7 @@ void reflect_parameter(VariableLayoutReflection* param,
                        ShaderStage stage,
                        slang::ProgramLayout* program,
                        BindingClaims& claims,
+                       const ShaderReflection& from_spirv,
                        ShaderReflection& reflection) {
   auto const category = param->getCategory();
   auto* type = param->getTypeLayout();
@@ -285,8 +286,17 @@ void reflect_parameter(VariableLayoutReflection* param,
     size_t end = 0;
     for (unsigned i = 0; i < block->getFieldCount(); ++i) {
       auto* field = block->getFieldByIndex(i);
-      auto const offset = field->getOffset();
       auto const size = declared_member_size(field->getTypeLayout());
+      // Slang's SPIR-V honours a member's [[vk::offset]], which is how a stage places
+      // its push constants after another stage's range, but its program layout ignores
+      // it and packs the member from 0. So the offset comes from the SPIR-V whenever
+      // the SPIR-V has the member, which it does whenever the entry point reads it;
+      // a member it never reads is never pushed to through this stage either.
+      auto const& from_spirv_member =
+          from_spirv.getPushConstantItemInfo(field->getName());
+      auto const offset = from_spirv_member.offset >= 0
+                              ? static_cast<size_t>(from_spirv_member.offset)
+                              : field->getOffset();
       reflection.addPushConstantAttr(
           field->getName(), static_cast<int>(offset), static_cast<int>(size));
       begin = std::min(begin, offset);
@@ -417,7 +427,9 @@ std::map<std::string, std::set<std::string>> serialized_items(
 
 std::vector<ShaderReflection> reflect_slang_material(
     slang::ICompileRequest& request,
-    const std::vector<ShaderCompilerBackend::StageSource>& stages) {
+    const std::vector<ShaderCompilerBackend::StageSource>& stages,
+    const std::vector<ShaderReflection>& from_spirv) {
+  CHECK_EQ(from_spirv.size(), stages.size());
   auto* program = reinterpret_cast<slang::ProgramLayout*>(request.getReflection());
   RUNTIME_EX_ASSERT(program, "Slang produced no program layout");
 
@@ -459,7 +471,8 @@ std::vector<ShaderReflection> reflect_slang_material(
                         "Slang's program layout lists '" + std::string(param->getName()) +
                             "' where shader \"" + stages[i].pretty_name +
                             "\" declares '" + expected + "'");
-      reflect_parameter(param, stages[i].shader_stage, program, claims, reflections[i]);
+      reflect_parameter(
+          param, stages[i].shader_stage, program, claims, from_spirv[i], reflections[i]);
     }
   }
   while (next < program->getParameterCount() &&

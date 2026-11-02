@@ -328,12 +328,16 @@ ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
     results.stages[0].second = std::move(error);
   };
   try {
-    auto reflections = reflect_slang_material(*request, stages);
+    std::vector<ShaderReflection> from_spirv(stages.size());
     for (size_t i = 0; i < stages.size(); ++i) {
       ShaderRedecorator redecorator(stages[i].pretty_name);
-      ShaderReflection from_spirv;
-      redecorator.redecorate(results.stages[i].first, from_spirv, stages[i].pretty_name);
-      auto const differences = compare_with_spirv_reflection(reflections[i], from_spirv);
+      redecorator.redecorate(
+          results.stages[i].first, from_spirv[i], stages[i].pretty_name);
+    }
+    auto reflections = reflect_slang_material(*request, stages, from_spirv);
+    for (size_t i = 0; i < stages.size(); ++i) {
+      auto const differences =
+          compare_with_spirv_reflection(reflections[i], from_spirv[i]);
       if (!differences.empty()) {
         fail_material("Slang's layout and its SPIR-V disagree about shader \"" +
                       stages[i].pretty_name + "\":\n" + differences);

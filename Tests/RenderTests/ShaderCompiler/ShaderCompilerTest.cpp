@@ -1216,6 +1216,39 @@ void main() {
                 execution_modes(results.stages[0].first));
 }
 
+TEST_F(GeneralShaderCompilerTest, SlangPushConstantOffsetTest) {
+  // A push constant member placed after another stage's range, as PolyMark's capture
+  // shader places its own: by layout(offset) for glslang and by [[vk::offset]] for
+  // Slang, which rejects the former. Slang's SPIR-V honours the attribute but its
+  // program layout does not, so the reflection must take the offset from the SPIR-V.
+  std::string const source = R"glsl(#version 460
+#extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_shader_explicit_arithmetic_types : require
+layout(location = 0) out vec4 color;
+layout(push_constant) uniform OFFSET_PUSH_CONSTANTS {
+#ifdef __SLANG__
+  [[vk::offset(8)]] uint32_t tileIndex;
+#else
+  layout(offset = 8) uint32_t tileIndex;
+#endif
+} pushConstants;
+void main() {
+  color = vec4(float(pushConstants.tileIndex));
+}
+)glsl";
+  GlslangWrapper glslang(this->shaderMgr->getLibrary());
+  SlangBackend slang(this->shaderMgr->getLibrary());
+  auto const from_glslang =
+      reflect_with(glslang, "offset.frag", source, ShaderStage::kFragment);
+  auto const results = slang.compileMaterial({ShaderCompilerBackend::StageSource{
+      "offset.frag", source, "main", ShaderStage::kFragment}});
+  ASSERT_FALSE(results.stages[0].first.empty()) << results.material_error;
+  ASSERT_EQ(results.reflections.size(), size_t(1));
+  EXPECT_EQ(from_glslang,
+            reflection_to_string(results.reflections[0]) +
+                execution_modes(results.stages[0].first));
+}
+
 TEST_F(GeneralShaderCompilerTest, SlangSelectionTest) {
   // The generator word of a SPIR-V header says which compiler produced it
   constexpr uint32_t kGlslangGenerator = 8;
