@@ -75,7 +75,8 @@
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "pointTemplate.mesh",
@@ -89,21 +90,24 @@
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "symbolTemplate.vert",
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "vertex"
+      "class": "vertex",
+      "slang": true
     },
     {
       "filename": "symbolTemplate.frag",
       "file_path": "./Marks/shaders",
       "internal_path": "Marks/",
       "language": "glsl",
-      "class": "fragment"
+      "class": "fragment",
+      "slang": true
     },
     {
       "filename": "windBarbTemplate.vert",
