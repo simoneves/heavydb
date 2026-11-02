@@ -224,6 +224,12 @@ ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
   session_desc.targetCount = 1;
   session_desc.defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_ROW_MAJOR;
   session_desc.fileSystem = impl_->file_system.get();
+  // A quoted include is looked up relative to the including file, but an angle-bracket
+  // one, #include <DriverTests/testUtils.glsl>, only on the search paths. The library's
+  // root is the one search path, which the file system above resolves.
+  char const* search_paths[] = {"."};
+  session_desc.searchPaths = search_paths;
+  session_desc.searchPathCount = 1;
   session_desc.allowGLSLSyntax = true;
   session_desc.compilerOptionEntries = options.data();
   session_desc.compilerOptionEntryCount = static_cast<uint32_t>(options.size());
