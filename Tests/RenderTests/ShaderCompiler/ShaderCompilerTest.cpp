@@ -1036,6 +1036,37 @@ void main() {
   }
 }
 
+TEST_F(GeneralShaderCompilerTest, SlangSampledImageFormatTest) {
+  // A sampled image's type carries no format in GLSL, so its SPIR-V format has to be
+  // Unknown, as glslang emitted it. Left to guess, Slang gives an integer sampler the
+  // format of its four-component result, Rgba32ui or Rgba32i, and a view of any other
+  // format, the R32_UINT ID images the accumulation pass samples among them, then
+  // reads undefined values.
+  std::string const source = R"glsl(#version 460
+layout(binding = 0) uniform usampler2D unsigned_ids;
+layout(binding = 1) uniform isampler2D signed_ids;
+layout(location = 0) out vec4 color;
+void main() {
+  color = vec4(texelFetch(unsigned_ids, ivec2(0), 0).x) +
+          vec4(texelFetch(signed_ids, ivec2(0), 0).x);
+}
+)glsl";
+  SlangBackend slang(this->shaderMgr->getLibrary());
+  auto const results = slang.compileMaterial({ShaderCompilerBackend::StageSource{
+      "sampledFormat.frag", source, "main", ShaderStage::kFragment}});
+  ASSERT_FALSE(results.stages[0].first.empty()) << results.material_error;
+  auto const text = disassemble(results.stages[0].first);
+  size_t image_types = 0;
+  std::istringstream lines(text);
+  for (std::string line; std::getline(lines, line);) {
+    if (line.find("OpTypeImage") != std::string::npos) {
+      ++image_types;
+      EXPECT_NE(line.find("Unknown"), std::string::npos) << line;
+    }
+  }
+  EXPECT_EQ(image_types, size_t(2)) << text;
+}
+
 // Reflects one stage compiled by the given backend, or returns an empty string with
 // the failure recorded
 std::string reflect_with(ShaderCompilerBackend& backend,

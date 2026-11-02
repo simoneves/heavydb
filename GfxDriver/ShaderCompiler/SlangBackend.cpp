@@ -205,7 +205,13 @@ ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
   // time from a separate shared library, libslang-glslang-<version>; without that
   // library every compile fails. Unoptimized, it needs no library beyond the compiler,
   // and its output is identical with or without it.
-  std::array<slang::CompilerOptionEntry, 4> options{};
+  //
+  // An image whose declaration gives no format is emitted with format Unknown, as
+  // glslang emitted it, rather than one Slang guesses from the element type. A guessed
+  // format is wrong for a sampled integer image: usampler2D comes out Rgba32ui, and
+  // sampling an R32_UINT view through it reads undefined values. See
+  // SlangSampledImageFormatTest.
+  std::array<slang::CompilerOptionEntry, 5> options{};
   options[0].name = slang::CompilerOptionName::EmitSpirvDirectly;
   options[0].value.intValue0 = 1;
   options[1].name = slang::CompilerOptionName::VulkanUseEntryPointName;
@@ -215,6 +221,8 @@ ShaderCompilerBackend::CompileResults SlangBackend::compileMaterial(
   options[2].value.stringValue0 = "39001";
   options[3].name = slang::CompilerOptionName::Optimization;
   options[3].value.intValue0 = SLANG_OPTIMIZATION_LEVEL_NONE;
+  options[4].name = slang::CompilerOptionName::DefaultImageFormatUnknown;
+  options[4].value.intValue0 = 1;
 
   slang::SessionDesc session_desc;
   session_desc.targets = &target;
