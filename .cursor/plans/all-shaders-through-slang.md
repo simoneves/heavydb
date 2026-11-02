@@ -95,7 +95,8 @@ All 147 stages in every manifest are opted in, production and test alike. With S
   - mesh output read-back;
   - inheritance internal error.
 - **Saved Manual builders** for the line and fastSymbol templates predate the `<...Slang>` tags, and stay commented out of the Legacy cases. The point template's two do compile through Slang. The others would need recapturing.
-- **Full deps rebuild**, to confirm nothing needs the glslang headers that are no longer copied into the prefix.
+- **Full deps rebuild**: done (2026-11-02). The deps container no longer builds glslang (`df8fdff404`), and a fresh full build and both test suites pass against it.
+- **Debug build with validation layers**: done (2026-11-02), and it found four problems no Release run had shown, now fixed. See "Debug build with validation layers" in remaining-slang-migration-work.md.
 - **A new manifest entry needs CMake re-run**: the generated shader sources are listed at configure time. Making the manifests configure dependencies would fix that.
 - **Unrelated bug found:** a wind barb Vega that omits `quantizeDirection` fails, because the property is declared `INT` but defaults to `true`.
 

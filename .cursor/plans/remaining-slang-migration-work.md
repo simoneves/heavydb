@@ -289,7 +289,21 @@ That file system is not optional detail: per the PR 3 findings above, the assemb
 - `9eaa579489` - glslang removed: `GlslangWrapper`, `ResourceLimits` and `SerializationTest`, `ShaderCompilerBackendType` and `setCompilerBackend`, `ENABLE_SLANG` and `HAVE_SLANG`. A rendering build requires Slang. `FindGlslang` became `FindSpirvTools`. Every golden regenerates from Slang unchanged. The one test difference: an unlocated vertex input gets location 2 from Slang where glslang gave 0.
 - `9e73df6744` - The glslang side of every `__SLANG__` conditional in the shaders, and the Mark code that filled the geometry stage's GLSL interface tags, which no template had any more. The GfxWSI sandboxes, which only filled those tags, now fill the Slang structs; they are built only with a display, so that change is uncompiled.
 
-The seven behaviours below were all reproduced, and the tests pinning them pass. Still open from this section: the PR 895 limitation (an auto-assigned binding in an earlier stage taking a number a later stage declares explicitly) has not been tested against Slang, and the push constant ranges are still hand-written rather than derived from reflection.
+The seven behaviours below were all reproduced, and the tests pinning them pass. Two follow-ups from this section have since landed:
+
+- `de56749657` - The PR 895 limitation is gone under Slang: `SlangLaterExplicitBindingTest` binds a sampler explicitly to 0 in a later stage only, and the earlier stage's unbound block is placed elsewhere.
+- `337932d39c`, `d68e75674c` - Push constant ranges are derived from reflection (`Material::getPushConstantRanges`), one per stage over its block's span, and all the hand-written ranges and the parameters that carried them are gone. A comparison across both test suites before the switch found every pipeline either matching or over-declared. One dependency had hidden behind the over-declaration: PolyMark's composite pipeline never had its tile index pushed, reading the capture pipeline's through layouts made compatible by one shared range set, and its second pass, after a flush, read it undefined. It is now pushed before each composite dispatch.
+
+### Debug build with validation layers (2026-11-02)
+
+Every earlier run was Release, which does not enable the validation layers. The first Debug run of the render suite failed ten tests, all on validation errors that Release builds never see. Three came from Slang's SPIR-V differing from glslang's, and one bug predated the migration:
+
+- `c604d3c9c5` - Slang compiles `discard` to `OpDemoteToHelperInvocation`, not `OpKill`, which needs `shaderDemoteToHelperInvocation`. It is core in Vulkan 1.3, the device floor, and is now required and enabled. This failed every shader module with a `discard`: all six QueryRendererTest cases.
+- `1d2df2e798` - Without `vertexPipelineStoresAndAtomics`, a vertex stage's storage buffers must be `NonWritable` unless the layer can see they are never written. glslang's SPIR-V passed that analysis, but Slang's did not, for three buffers that are only read. What in Slang's output makes them look written was not pinned down. They are now declared `readonly`; generated buffers already were.
+- `41cda2309a` - Predates Slang. `VulkanMaterial` sized its descriptor pool at one descriptor per binding, ignoring arrays, so `CanUpdateDescriptors` allocated 6 samplers from a pool of 3.
+- `1bb710e9fe` - Found by Debug be-render-tests. Slang guesses an unformatted image's SPIR-V format from its element type, so `usampler2D` became `Rgba32ui`, which mismatched the accumulation ID pass's `R32_UINT` views: undefined reads that rendered correctly by luck. `DefaultImageFormatUnknown` restores `Unknown`, pinned by `SlangSampledImageFormatTest`.
+
+After these, the Debug render suite and Debug be-render-tests (441 passing, the two known failures) run with no validation messages at all. **Lesson for later work: run a Debug build with the layers before calling a compiler change done.** Release passing said nothing about any of these.
 
 The original plan follows.
 
