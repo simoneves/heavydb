@@ -440,13 +440,13 @@ TEST_P(CompileThroughSlang, FromFile) {
       << info.filename;
 }
 
-// The Renderer cases Slang's GLSL mode compiles correctly. Not SeparateMultiSample,
-// which Slang miscompiles; see SlangSeparateMultiSampleTest. Not the Manual cases,
-// which are Marks and use buffer device addresses, which Slang's GLSL mode rejects.
+// The Renderer cases, each compiled single-stage. Not the Manual cases, which are Mark
+// stages whose saved builders predate the Slang forms of their templates' tags.
 // clang-format off
 static const std::vector<FromFileTestInfo> builder_through_slang_cases({
     {"Renderer", "fullScreenTriangle.vert"},
     {"Renderer", "MSMultiGpuComposite.comp"},
+    {"Renderer", "SeparateMultiSample.frag"},
     {"Renderer", "SMAABlendingWeightCalculation.frag"},
     {"Renderer", "SMAAEdgeDetection.frag"},
     {"Renderer", "SMAANeighborhoodBlending.frag"},
