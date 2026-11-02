@@ -346,7 +346,23 @@ A spike on branch `simoneves_pr8_spike` (`5bee920cf0`, worktree `../heavydb-pr8-
 - **Compile time barely moves.** Per compile, in one persistent session: spliced 29.7 ms, generic module 30.9 ms, a concrete module function 26.0 ms, no scale at all 23.5 ms. The scales were 6 ms of 30; the rest is semantic checking of the material's own body, which differs per material. An earlier note here expected about two-thirds of the per-material cost to become a one-off once shared code was in modules; that was wrong, because the two-thirds is checking the body, not the shared code.
 - **Modules need a persistent session.** A module costs about 30 ms to load per session, so with `SlangBackend`'s session per material the module variant cost twice today's. Keeping one session across materials needs thought about module names, memory growth, and resetting when the Library is replaced.
 
-So the compile-time case for PR 8 rests on link-time specialization of whole templates: compile each template once as a module, express everything that varies per material (types, choices, counts, uniform or per-vertex properties) as generic or specialization parameters, and pay only linking and SPIR-V generation per material, which profiling put at roughly half of today's cost. That requires a template's whole body off text splicing, `Builder` tags included. **Next step before committing to PR 8:** port one whole small template (a post-processing pass or the point template) to a module with a generic entry point, and measure one material's specialization cost in a persistent session. That decides whether PR 8 is justified by compile time, or by the `Builder`'s complexity alone. The in-memory material cache (`55fbb601eb`) already removes repeated compiles.
+So the compile-time case for PR 8 rests on whole templates, not shared pieces: compile each template once as a module, and express everything that varies per material as generic parameters rather than text.
+
+### Follow-up spike (2026-11-02): whole templates as modules halve the cost
+
+The follow-up (`7671e6cdf4`, same branch and write-up) ported the point Mark's whole vertex stage to a generic module, `pointVertex`, with each material reduced to glue: its declarations exactly as today, two small structs implementing `IPointProperties` and `IProjection` against them, and a `main` calling the module. The captured material's reflection was identical to the spliced shader's, and a second kind of point material (no key, size per vertex, unprojected) used the same module.
+
+Per compile, in one session: spliced as today 16.8 ms; module, captured material 8.3 ms; module, second material 6.7 ms. Loading the module costs about 10 ms once per session; with a session per material, as now, there is no gain. So whole templates as modules roughly halve the per-material cost. Across be-render-tests' first-time compiles, about 21 s after the in-memory cache, that would be roughly half again, if the larger templates behave like this one.
+
+Caveats: rendering equivalence was not checked; the module version's SPIR-V is larger (8.4 against 6.9 KB, interface methods left as functions at `-O0`), so pipeline creation time should be checked; slab-read properties, scales, accumulation and row IDs were not covered.
+
+What PR 8 proper has to settle:
+- **A persistent session in `SlangBackend`**: its lifetime, memory growth, module naming, and starting again when the Library is replaced. Without it, modules cost more, not less.
+- **The interfaces each template needs**, which is most of the work: properties from attributes, uniforms and slab reads, with scales, accumulation and row IDs.
+- **Module-clean shared includes**: a `.slang` module must `import glsl;` to see GLSL's built-in names (which `slangc -allow-glsl` hides but the API does not), and needs `static const` where the includes have a global `const`. Slang's GLSL mode accepts both, and glslang no longer constrains them.
+- **The `Builder` generating glue**, declarations plus interface implementations, instead of splicing bodies: a much smaller job than today's.
+
+The in-memory material cache (`55fbb601eb`) already removes repeated compiles.
 
 ## Risks that span the remaining work
 
