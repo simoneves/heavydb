@@ -3,32 +3,55 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef __SLANG__
 #extension GL_EXT_mesh_shader : enable
+#endif
+#include "Slang/slangMesh.glsl"
 
 #include "DriverTests/testUtils.glsl"
 
 #define MAX_NUM_MESH_TASKS <maxNumMeshTasks>
 #define MAX_NUM_QUADS <maxNumQuads>
 
+#ifndef __SLANG__
 layout (local_size_x = MAX_NUM_MESH_TASKS, local_size_y = 1, local_size_z = 1) in;
 layout (triangles, max_vertices = MAX_NUM_QUADS * 4, max_primitives = MAX_NUM_QUADS * 2) out;
+#endif
 
 struct TaskData
 {
   uvec2 pixel_coord;
   uint num_quads;
 };
+#ifndef __SLANG__
 taskPayloadSharedEXT TaskData td;
+#endif
 
+#ifdef __SLANG__
+// See Slang/slangMesh.glsl
+struct PerVertexData {
+  float4 gl_Position : SV_Position;
+  [[vk::location(0)]] vec4 color;
+};
+#define v_out slang_mesh_vertices_
+#else
 layout (location = 0) out PerVertexData {
   vec4 color;
 } v_out[];
+#endif
 
 layout(std430) uniform MESH_SHADER_UBO_TYPE {
   uvec2 imageSizeM;
 };
 
+#ifdef __SLANG__
+[outputtopology("triangle")]
+[numthreads(MAX_NUM_MESH_TASKS, 1, 1)]
+void main(in payload TaskData td,
+          SLANG_MESH_OUTPUTS(PerVertexData, MAX_NUM_QUADS * 4, uint3, MAX_NUM_QUADS * 2))
+#else
 void main()
+#endif
 {
   float x_scale = 2.0 / float(imageSizeM.x);
   float y_scale = 1.0 / float(imageSizeM.y);
@@ -53,7 +76,7 @@ void main()
     gl_MeshVerticesEXT[vertex_id+3].gl_Position = vec4(pos[3].x + x_offset, pos[3].y, 0.0, 1.0);
 
     float hue = y_offset * 180.0;
-    float light = float(quad + td.pixel_coord.x + gl_WorkGroupID * td.num_quads) / float(imageSizeM.x) * 0.85 + 0.05;
+    float light = float(quad + td.pixel_coord.x + gl_WorkGroupID.x * td.num_quads) / float(imageSizeM.x) * 0.85 + 0.05;
 
     vec4 c = transformHSLtoRGB(vec4(hue, 1.0, light, 1.0));
     v_out[vertex_id    ].color = c;
