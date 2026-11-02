@@ -3,24 +3,42 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#ifndef __SLANG__
 #extension GL_EXT_buffer_reference2 : require
+#endif
 
 in vec2 in_position;
 in vec3 in_color;
 
 layout(location = 0) out vec4 fColor;
 
+// Slang has no buffer_reference. Under __SLANG__ each reference type is a struct
+// holding a pointer to the same physical storage buffer address, so that
+// Type(address).member[i] reads and writes the same way in either form.
+#ifdef __SLANG__
+struct BufferPointer {
+  uint64_t* p;
+  __init(uint64_t address) { p = (uint64_t*)address; }
+};
+struct BufferInt64 {
+  int64_t* i;
+  __init(uint64_t address) { i = (int64_t*)address; }
+};
+struct BufferDouble {
+  double* d;
+  __init(uint64_t address) { d = (double*)address; }
+};
+#else
 layout(buffer_reference, std430, buffer_reference_align = 8) buffer BufferPointer {
   uint64_t p[];
 };
-
 layout(buffer_reference, std430, buffer_reference_align = 8) buffer BufferInt64 {
   int64_t i[];
 };
-
 layout(buffer_reference, std430, buffer_reference_align = 8) buffer BufferDouble {
   double d[];
 };
+#endif
 
 layout(push_constant, std430) uniform Registers
 {
