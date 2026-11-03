@@ -14,9 +14,10 @@ namespace gfx {
 
 // Reads a compiled shader's interface out of its SPIR-V and into a ShaderReflection,
 // checking as it goes that no two resources of a material were given the same binding.
-// It no longer assigns anything: glslang resolves sets, bindings and locations across
-// the material before this ever sees the module. The name is left alone because the
-// class is expected to go when glslang is replaced by Slang.
+// It assigns nothing: the compiler resolves sets, bindings and locations across the
+// material before this ever sees the module. The name is historical. A Slang material
+// is reflected from Slang's layout (SlangReflection), and this reads the same stage's
+// SPIR-V to check that reflection against, and for the parts Slang's layout gets wrong.
 class ShaderRedecorator {
  public:
   explicit ShaderRedecorator(std::string_view shader_name);
@@ -38,8 +39,7 @@ class ShaderRedecorator {
 
  private:
   // Every resource lands in this one set. No shader in the library declares an explicit
-  // set, and glslang's resolver assigns 0 in the absence of one, so there is never a
-  // second.
+  // set, and the compiler assigns 0 in the absence of one, so there is never a second.
   static constexpr uint32_t kDescriptorSet = 0U;
 
   // A binding beyond this cannot have come from a layout qualifier, so seeing one means
@@ -47,6 +47,10 @@ class ShaderRedecorator {
   // actually constrains us is the device's maxPerStageDescriptor*, which is enforced
   // when the descriptor set layout is built.
   static constexpr uint32_t kMaxBindingsPerSet = 0xFFFFU;
+
+  // The tool id Slang writes into the generator word of a SPIR-V header, from the
+  // Khronos registry of SPIR-V generators. glslang's is 8.
+  static constexpr uint32_t kSlangSpirvGeneratorId = 40U;
 
   using ReservedBindingEntry = std::tuple<ResourceType, std::string>;
   using ReservedBindings = std::map<uint32_t, ReservedBindingEntry>;

@@ -6,7 +6,9 @@
 #include "GfxDriver/ShaderCompiler/ShaderRedecorator.h"
 
 #include <algorithm>
+#include <string>
 #include <string_view>
+#include <vector>
 
 #include <spirv_cross/spirv.hpp>
 #include <spirv_cross/spirv_glsl.hpp>
@@ -127,6 +129,66 @@ void ShaderRedecorator::redecorateInternal(const spirv_t& spirv,
   spirv_cross::CompilerGLSL compiler(spirv.data(), spirv.size());
   spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
+  // Slang's SPIR-V describes the same interface as glslang's did with different names: a
+  // block's type is SLANG_ParameterGroup_<name>_<layout>, which is the name SPIRV-Cross
+  // reports for a uniform or storage block. Restore the declared name once, here, so
+  // that everything below (bindings, clash messages, the reflection itself) sees the
+  // names Material and the Vega writers look up. The generator id in the SPIR-V header
+  // says which compiler produced it.
+  bool const from_slang = spirv.size() > 2 && (spirv[2] >> 16) == kSlangSpirvGeneratorId;
+  auto const canonical_name = [from_slang](std::string name) {
+    if (!from_slang) {
+      return name;
+    }
+    auto const strip_suffix = [&name](std::string_view suffix) {
+      if (name.size() > suffix.size() &&
+          name.compare(name.size() - suffix.size(), suffix.size(), suffix) == 0) {
+        name.erase(name.size() - suffix.size());
+        return true;
+      }
+      return false;
+    };
+    constexpr std::string_view kPrefix = "SLANG_ParameterGroup_";
+    if (name.rfind(kPrefix, 0) == 0) {
+      name.erase(0, kPrefix.size());
+      for (std::string_view suffix : {"_std430", "_std140", "_scalar", "_natural"}) {
+        if (strip_suffix(suffix)) {
+          break;
+        }
+      }
+    } else {
+      // A scalar storage block can be named <block>_natural, with no prefix
+      strip_suffix("_natural");
+    }
+    return name;
+  };
+  if (from_slang) {
+    for (auto* list : {&resources.uniform_buffers,
+                       &resources.storage_buffers,
+                       &resources.push_constant_buffers,
+                       &resources.sampled_images,
+                       &resources.storage_images,
+                       &resources.acceleration_structures}) {
+      for (auto& resource : *list) {
+        resource.name = canonical_name(resource.name);
+      }
+    }
+  }
+
+  // Slang also wraps every array member of a block in a struct of its own, named
+  // _Array_<layout>_<element><length>, whose only member, data, is the array. An array
+  // of arrays is wrappers nested. Recognised only in Slang's output, so that a struct of
+  // ours that happened to look like one is never mistaken for it.
+  auto const is_slang_array_wrapper = [&](const spirv_cross::SPIRType& type) {
+    if (!from_slang || type.basetype != spirv_cross::SPIRType::Struct ||
+        type.member_types.size() != 1) {
+      return false;
+    }
+    return compiler.get_name(type.self).rfind("_Array_", 0) == 0 &&
+           compiler.get_member_name(type.self, 0) == "data" &&
+           !compiler.get_type(type.member_types[0]).array.empty();
+  };
+
   // blob should have only one entry point
   auto entry_points_and_stages = compiler.get_entry_points_and_stages();
   CHECK(entry_points_and_stages.size() == 1);
@@ -157,7 +219,7 @@ void ShaderRedecorator::redecorateInternal(const spirv_t& spirv,
     return type.array.size() ? type.array[0] : 1;
   };
 
-  // capture vertex stage input attributes, at the locations glslang gave them
+  // capture vertex stage input attributes, at the locations the compiler gave them
   if (execution_model == spv::ExecutionModelVertex) {
     if (resources.stage_inputs.size()) {
       LOG_IF(INFO, DEBUG_LOG_REFLECTION)
@@ -189,8 +251,8 @@ void ShaderRedecorator::redecorateInternal(const spirv_t& spirv,
     }
   }
 
-  // Reads the set and binding glslang assigned, checking that the set is the only one
-  // we support and that the binding is not already another resource's
+  // Reads the set and binding the compiler assigned, checking that the set is the only
+  // one we support and that the binding is not already another resource's
   auto claim_binding = [&](const spirv_cross::Resource& resource,
                            ResourceType resource_type) -> uint32_t {
     auto const assigned_set = check_has_decoration(
@@ -247,7 +309,7 @@ void ShaderRedecorator::redecorateInternal(const spirv_t& spirv,
 
           // iterate members
           for (uint32_t i = 0; i < buffer_member_count; i++) {
-            auto const& member_type = compiler.get_type(buffer_type.member_types[i]);
+            auto const& declared_type = compiler.get_type(buffer_type.member_types[i]);
             auto const& member_name = compiler.get_member_name(buffer_type.self, i);
             auto const member_offset = compiler.type_struct_member_offset(buffer_type, i);
             auto const member_size =
@@ -264,34 +326,65 @@ void ShaderRedecorator::redecorateInternal(const spirv_t& spirv,
             // is how the only multi-dimensional member we have is actually used:
             // PPLL_BATCH_STAT_COUNTERS_SSBO is declared [batches][tiles] and read back
             // into one flat vector by PPLLRender.
+            // Every dimension of the member, innermost first as SPIRV-Cross stores them,
+            // and the type of one element. For other compilers that is the member's own
+            // type and its dimensions. For Slang the member is a wrapper, so each level
+            // is looked through: the outermost array is the first one found, and each
+            // deeper one is an inner dimension.
+            const spirv_cross::SPIRType* element_type = &declared_type;
+            std::vector<uint32_t> dimensions(declared_type.array.begin(),
+                                             declared_type.array.end());
+            std::vector<bool> dimension_is_literal(
+                declared_type.array_size_literal.begin(),
+                declared_type.array_size_literal.end());
+            uint32_t outer_length = 0;
+            uint32_t outer_stride = 0;
+            if (!dimensions.empty()) {
+              // The stride decorating the member's own type is the one belonging to
+              // array.back(), the outermost dimension
+              outer_length = dimensions.back();
+              outer_stride = compiler.type_struct_member_array_stride(buffer_type, i);
+            }
+            while (is_slang_array_wrapper(*element_type)) {
+              auto const& wrapper = compiler.get_type(element_type->self);
+              auto const& data_type = compiler.get_type(wrapper.member_types[0]);
+              if (dimensions.empty()) {
+                outer_length = data_type.array.back();
+                outer_stride = compiler.type_struct_member_array_stride(wrapper, 0);
+              }
+              dimensions.insert(
+                  dimensions.begin(), data_type.array.begin(), data_type.array.end());
+              dimension_is_literal.insert(dimension_is_literal.begin(),
+                                          data_type.array_size_literal.begin(),
+                                          data_type.array_size_literal.end());
+              element_type = &data_type;
+            }
+            auto const& member_type = *element_type;
+
             int array_length = -1;
             int array_stride = -1;
-            if (!member_type.array.empty()) {
+            if (!dimensions.empty()) {
               // A dimension given by a specialization constant is stored as that
               // constant's id rather than as a size, so reading it as one would record a
               // plausible-looking wrong number. Nothing declares one today, every
               // dimension in the shader library being a literal or a textual
               // substitution made before compilation.
-              CHECK(std::all_of(member_type.array_size_literal.begin(),
-                                member_type.array_size_literal.end(),
-                                [](auto const literal) { return literal; }))
+              CHECK(std::all_of(dimension_is_literal.begin(),
+                                dimension_is_literal.end(),
+                                [](bool const literal) { return literal; }))
                   << "Array member '" << member_name
                   << "' is sized by a specialization constant, which cannot be reflected";
 
-              // SPIRV-Cross stores the dimensions innermost first, so the stride
-              // decorating the member's own type is the one belonging to array.back()
-              auto const outer_stride =
-                  compiler.type_struct_member_array_stride(buffer_type, i);
-              auto const total_bytes = member_type.array.back() * outer_stride;
+              auto const total_bytes = outer_length * outer_stride;
               uint32_t element_count = 1;
-              for (auto const dimension : member_type.array) {
+              for (auto const dimension : dimensions) {
                 element_count *= dimension;
               }
 
               if (element_count == 0) {
                 // Runtime-sized. Only the outermost dimension may be, and with no element
                 // count to divide by, the outer stride is already the element stride.
-                CHECK_EQ(member_type.array.size(), 1u)
+                CHECK_EQ(dimensions.size(), 1u)
                     << "Runtime-sized array member '" << member_name
                     << "' also has inner dimensions, whose extent is lost by flattening";
                 array_length = 0;
@@ -315,9 +408,16 @@ void ShaderRedecorator::redecorateInternal(const spirv_t& spirv,
               // iterate children and flatten
               uint32_t struct_member_count = member_type.member_types.size();
               for (uint32_t j = 0; j < struct_member_count; j++) {
-                // get child
-                auto const& child_member_type =
-                    compiler.get_type(member_type.member_types[j]);
+                // get child. An array child of Slang's comes wrapped like an array
+                // member does; its size and offset are the wrapper's, which are the
+                // array's, so only the type to validate needs unwrapping.
+                auto const* child_element_type =
+                    &compiler.get_type(member_type.member_types[j]);
+                while (is_slang_array_wrapper(*child_element_type)) {
+                  child_element_type = &compiler.get_type(
+                      compiler.get_type(child_element_type->self).member_types[0]);
+                }
+                auto const& child_member_type = *child_element_type;
                 auto const& child_member_name =
                     compiler.get_member_name(member_type.self, j);
                 auto const child_member_offset =
@@ -473,7 +573,7 @@ void ShaderRedecorator::redecorateInternal(const spirv_t& spirv,
       // Either may be absent. A block declared without an instance name has no
       // variable name to report, and an empty one must not be recorded: it would put
       // an unnamed entry in the reflection and make a lookup on "" succeed.
-      auto const& type_name = compiler.get_name(block.base_type_id);
+      auto const type_name = canonical_name(compiler.get_name(block.base_type_id));
       if (!block.name.empty()) {
         reflection.addPushConstant(block.name, block_begin, block_end - block_begin);
       }

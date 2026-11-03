@@ -119,6 +119,13 @@ list(APPEND GFXDRIVER_SOURCES
   ShaderCompiler/ResourceLimits.cpp)
 list(APPEND GFXDRIVER_LIBS ${Glslang_LIBRARIES})
 
+find_package(Slang REQUIRED)
+list(APPEND GFXDRIVER_SOURCES
+  ShaderCompiler/SlangBackend.cpp
+  ShaderCompiler/SlangReflection.cpp)
+list(APPEND GFXDRIVER_INCLUDE_DIRS ${Slang_INCLUDE_DIR})
+list(APPEND GFXDRIVER_LIBS ${Slang_LIBRARIES})
+
 find_package(SpirvCross REQUIRED)
 list(APPEND GFXDRIVER_SOURCES
   ShaderCompiler/SpirvCrossUtils.cpp
@@ -240,6 +247,8 @@ add_library(GfxDriver ${GFXDRIVER_SOURCES})
 target_include_directories(GfxDriver PRIVATE ${GFXDRIVER_INCLUDE_DIRS})
 target_link_libraries(GfxDriver ${GFXDRIVER_LIBS})
 target_compile_definitions(GfxDriver PRIVATE ${GFXDRIVER_DEFS})
+# How slang.h declares its API when Slang is linked statically, which it always is
+target_compile_definitions(GfxDriver PRIVATE SLANG_STATIC)
 
 # expose the definitions to the parent
 set(GFXDRIVER_INCLUDE_DIRS ${GFXDRIVER_INCLUDE_DIRS} PARENT_SCOPE)
