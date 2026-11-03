@@ -158,7 +158,9 @@ void WindBarbMark::initPropertiesFromJSONObj(const JSONLocation& obj_loc,
         nullptr,
         nullptr,
         nullptr,
-        [this](const JSONLocation&) { do_quantize_direction_.initializeValue(true); });
+        // 1 rather than true: the property is an INT, and a bool would be stored as a
+        // bool under that type, which getUniformValue then refuses to read
+        [this](const JSONLocation&) { do_quantize_direction_.initializeValue(1); });
 
     initIds(data_changed);
 
@@ -411,7 +413,8 @@ void WindBarbMark::setUniformAttributes(MarkPerGpuData& mark_gpu_data) {
                                       1.0f / (float)viewport_height);
   if (!direction_.isDataDriven()) {
     float direction = direction_.getUniformValue<float>();
-    direction = do_quantize_direction_.getUniformValue<float>()
+    // An int, as the BoolRenderProperty holds; asking for any other type fails its CHECK
+    direction = do_quantize_direction_.getUniformValue<int>() != 0
                     ? ((static_cast<int>(direction) + 5) / 10) * 10.0f
                     : direction;
     direction = -direction * 3.14159265359f / 180.0f;
