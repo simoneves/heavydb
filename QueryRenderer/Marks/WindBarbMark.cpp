@@ -414,7 +414,8 @@ void WindBarbMark::setUniformAttributes(MarkPerGpuData& mark_gpu_data) {
                                       1.0f / (float)viewport_height);
   if (!direction_.isDataDriven()) {
     float direction = direction_.getUniformValue<float>();
-    direction = do_quantize_direction_.getUniformValue<float>()
+    // An int, as the BoolRenderProperty holds; asking for any other type fails its CHECK
+    direction = do_quantize_direction_.getUniformValue<int>() != 0
                     ? ((static_cast<int>(direction) + 5) / 10) * 10.0f
                     : direction;
     direction = -direction * 3.14159265359f / 180.0f;
