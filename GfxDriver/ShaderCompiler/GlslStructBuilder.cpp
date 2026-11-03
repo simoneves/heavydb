@@ -5,12 +5,36 @@
 
 #include "GfxDriver/ShaderCompiler/GlslStructBuilder.h"
 
+#include <algorithm>
 #include <sstream>
 
 #include "GfxDriver/Resources/BufferLayout.h"
 #include "Logger/Logger.h"
 
 namespace gfx {
+
+namespace {
+
+// How many consecutive locations an interface variable of this type occupies. A 64-bit
+// three- or four-component vector takes two, and a matrix one per column.
+int locations_occupied(BufferAttrType type) {
+  switch (type) {
+    case BufferAttrType::kVec3d:
+    case BufferAttrType::kVec4d:
+    case BufferAttrType::kVec3ui64:
+    case BufferAttrType::kVec4ui64:
+    case BufferAttrType::kVec3i64:
+    case BufferAttrType::kVec4i64:
+      return 2;
+    case BufferAttrType::kMat3x2f:
+    case BufferAttrType::kMat3x2d:
+      return 3;
+    default:
+      return 1;
+  }
+}
+
+}  // namespace
 
 std::ostream& operator<<(std::ostream& os, const GlslStructBuilder::Qualifier value) {
   using e = GlslStructBuilder::Qualifier;
@@ -81,9 +105,23 @@ std::string GlslStructBuilder::createInterfaceBlockString(
   std::stringstream ss;
   int location = 0;
 
+  // Where every member occupies one location and none is skipped, one location on the
+  // block gives each member the same location a location per member would, and it is
+  // the form Slang accepts: Slang rejects a location on a member of an interface block.
+  // The qualifier follows the in or out the shader template writes before the block,
+  // which GLSL 4.6 allows. Otherwise each member keeps a location of its own.
+  bool const locate_block =
+      do_auto_locations && !reserved_locations && !is_geometry_shader &&
+      std::all_of(member_vector_.begin(), member_vector_.end(), [](auto const& info) {
+        return !info.is_array && locations_occupied(info.type) == 1;
+      });
+
   // Geometry shaders do not allow anonymous interface blocks due to
   // the unsized array syntax required, so skip outer bracing
   if (!is_geometry_shader) {
+    if (locate_block) {
+      ss << "layout (location = 0) ";
+    }
     ss << name_ << " {";
   }
 
@@ -92,7 +130,7 @@ std::string GlslStructBuilder::createInterfaceBlockString(
     ss << "\n  ";
 
     // Add location
-    if (do_auto_locations) {
+    if (do_auto_locations && !locate_block) {
       ss << "layout (location = " << location << ") ";
       location++;
       if (reserved_locations) {  // skip reserved locations
