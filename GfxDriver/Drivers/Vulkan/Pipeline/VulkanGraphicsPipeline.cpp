@@ -5,6 +5,8 @@
 
 #include "GfxDriver/Drivers/Vulkan/Pipeline/VulkanGraphicsPipeline.h"
 
+#include <chrono>
+
 #include "GfxDriver/Drivers/Vulkan/Pipeline/Utils.h"
 #include "GfxDriver/Drivers/Vulkan/Pipeline/VulkanMaterial.h"
 #include "GfxDriver/Drivers/Vulkan/Pipeline/VulkanPrimitiveAssembly.h"
@@ -14,6 +16,7 @@
 #include "GfxDriver/Drivers/Vulkan/VulkanDeviceContext.h"
 #include "GfxDriver/Drivers/Vulkan/VulkanResult.h"
 #include "GfxDriver/Pipeline/PipelineDescriptor.h"
+#include "Logger/Logger.h"
 
 namespace gfx {
 
@@ -375,8 +378,16 @@ void VulkanGraphicsPipeline::create(const RenderPass& render_pass) {
   pipeline_ci.basePipelineHandle = VK_NULL_HANDLE;  // optional
   pipeline_ci.basePipelineIndex = -1;               // optional
 
+  auto const create_start = std::chrono::steady_clock::now();
   result = vkCreateGraphicsPipelines(
       vk_device.getHandle(), VK_NULL_HANDLE, 1, &pipeline_ci, nullptr, &pipeline_);
+  // At debug level 1 only, as the shader compile time is. The driver's own share of
+  // building a pipeline from SPIR-V.
+  VLOG(1) << "Created graphics pipeline \"" << getTrackingData().origin << "\" in "
+          << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() -
+                                                       create_start)
+                 .count()
+          << " ms";
 
   if (result != VK_SUCCESS) {
     vkDestroyPipelineLayout(vk_device.getHandle(), pipeline_layout_, nullptr);

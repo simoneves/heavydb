@@ -5,11 +5,14 @@
 
 #include "GfxDriver/Drivers/Vulkan/Pipeline/VulkanRaytracingPipeline.h"
 
+#include <chrono>
+
 #include "GfxDriver/Drivers/Vulkan/Pipeline/VulkanMaterial.h"
 #include "GfxDriver/Drivers/Vulkan/Resources/Utils.h"
 #include "GfxDriver/Drivers/Vulkan/Resources/VulkanShaderModule.h"
 #include "GfxDriver/Drivers/Vulkan/VulkanDeviceContext.h"
 #include "GfxDriver/Drivers/Vulkan/VulkanResult.h"
+#include "Logger/Logger.h"
 
 namespace gfx {
 
@@ -217,6 +220,7 @@ void VulkanRaytracingPipeline::create(uint32_t max_ray_recursion_depth) {
   // create pipeline
   auto const& device_funcs = vk_device.getFunctions();
   VkPipeline new_pipeline = VK_NULL_HANDLE;
+  auto const create_start = std::chrono::steady_clock::now();
   result = device_funcs.vkCreateRayTracingPipelinesKHR(vk_device.getHandle(),
                                                        VK_NULL_HANDLE,
                                                        VK_NULL_HANDLE,
@@ -230,6 +234,13 @@ void VulkanRaytracingPipeline::create(uint32_t max_ray_recursion_depth) {
     pipeline_layout_ = VK_NULL_HANDLE;
     CHECK_VKRESULT(result, "creating Raytracing Pipeline");
   }
+  // At debug level 1 only, as the shader compile time is. The driver's own share of
+  // building a pipeline from SPIR-V.
+  VLOG(1) << "Created ray tracing pipeline \"" << getTrackingData().origin << "\" in "
+          << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() -
+                                                       create_start)
+                 .count()
+          << " ms";
 
   // Add it to the map
   pipeline_mgr_->insertPipeline(0u, new_pipeline);
