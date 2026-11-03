@@ -1082,25 +1082,10 @@ function install_vulkan() {
   pushd ${VULKAN_VERSION}
   # copy the build script locally
   \cp ${SCRIPTS_DIR}/../ThirdParty/vulkan/vulkansdk-${VULKAN_VERSION} vulkansdk
-  # build just what we need for this platform
-  ./vulkansdk --maxjobs --skip-deps loader glslang spirvcross vul layers slang
-  # also add these non-default glslang headers
-  # glslang 14 tightened which headers it installs, so the destinations may not exist
-  mkdir -p ${ARCH}/include/glslang/Include
-  mkdir -p ${ARCH}/include/glslang/MachineIndependent
-  \cp source/glslang/glslang/Include/intermediate.h ${ARCH}/include/glslang/Include
-  \cp source/glslang/glslang/Include/Common.h ${ARCH}/include/glslang/Include
-  \cp source/glslang/glslang/Include/arrays.h ${ARCH}/include/glslang/Include
-  \cp source/glslang/glslang/Include/BaseTypes.h ${ARCH}/include/glslang/Include
-  \cp source/glslang/glslang/Include/Types.h ${ARCH}/include/glslang/Include
-  \cp source/glslang/glslang/Include/PoolAlloc.h ${ARCH}/include/glslang/Include
-  \cp source/glslang/glslang/Include/SpirvIntrinsics.h ${ARCH}/include/glslang/Include
-  \cp source/glslang/glslang/Include/ConstantUnion.h ${ARCH}/include/glslang/Include
-  \cp source/glslang/glslang/MachineIndependent/iomapper.h ${ARCH}/include/glslang/MachineIndependent
-  \cp source/glslang/glslang/MachineIndependent/gl_types.h ${ARCH}/include/glslang/MachineIndependent
-  \cp source/glslang/glslang/MachineIndependent/LiveTraverser.h ${ARCH}/include/glslang/MachineIndependent
-  \cp source/glslang/glslang/MachineIndependent/localintermediate.h ${ARCH}/include/glslang/MachineIndependent
-  \cp source/glslang/glslang/MachineIndependent/reflection.h ${ARCH}/include/glslang/MachineIndependent
+  # build just what we need for this platform. spirvtools builds SPIRV-Headers and
+  # SPIRV-Tools, which the server links for SPIR-V validation and disassembly; glslang
+  # is not built, Slang being the shader compiler
+  ./vulkansdk --maxjobs --skip-deps loader spirvtools spirvcross vul layers slang
   popd
   # install
   rsync -av ${VULKAN_VERSION}/${ARCH}/* ${PREFIX}
