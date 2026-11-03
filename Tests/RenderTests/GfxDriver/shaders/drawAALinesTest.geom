@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#extension GL_ARB_shader_draw_parameters : require
 
 layout(lines_adjacency) in;
 layout(triangle_strip, max_vertices = 8) out;

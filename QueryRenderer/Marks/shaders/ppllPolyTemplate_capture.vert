@@ -3,9 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-//<extensions>
-#extension GL_ARB_shader_draw_parameters : require
-//</extensions>
 //<includes>
 #include "Marks/typeDefines.glsl"
 #include "Marks/coordConvertSubroutines.glsl"
@@ -57,8 +54,8 @@ layout(push_constant) uniform POLY_CAPTURE_VERT_PUSH_CONSTANTS {
 
 
 void main() {
-  if (gl_DrawIDARB < polygonIDs.length()) {
-    fPolygonID = polygonIDs[gl_DrawIDARB + pushConstants.batchOffset];
+  if (gl_DrawID < polygonIDs.length()) {
+    fPolygonID = polygonIDs[gl_DrawID + pushConstants.batchOffset];
   } else {
     fPolygonID = 0u;
   }

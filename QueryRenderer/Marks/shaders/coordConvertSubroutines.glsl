@@ -10,7 +10,7 @@
 #define NULL_DECIMAL (int64_t(1) << 63)
 
 #define SEPARATOR_INT32  -2147483647                // -std::numeric_limits<int32_t>::max()
-#define SEPARATOR_DOUBLE -1.797693134862315708e+308 // -std::numeric_limits<double>::max()
+#define SEPARATOR_DOUBLE -1.797693134862315708e+308LF // -std::numeric_limits<double>::max()
 
 double convertDecimalToDouble(in int64_t val, in uint64_t scale) {
   double rtn = double(val);

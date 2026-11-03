@@ -4,9 +4,6 @@
  */
 
 // FRAGMENT SHADER
-//<extensions>
-#extension GL_ARB_shader_draw_parameters : require
-//</extensions>
 // FRAGMENT SHADER
 // Inputs
 

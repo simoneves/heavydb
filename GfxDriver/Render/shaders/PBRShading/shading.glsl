@@ -91,7 +91,7 @@ vec4 cook_torrance(vec3 albedo, float roughness, float metallic, vec3 P, vec3 N,
 
   // Sum surface color and specular density estimate (for opacity modulation)
   vec3 color = vec3(0);
-  vec3 kS = vec3(0);
+  float kS = 0.0;
   uint32_t nlights = get_num_lights();
   vec3 L, lt_color;
 

@@ -172,22 +172,22 @@ void MercatorProjection::initShaderSource() {
 
   y_projection_shader_->setFunctionBody(R"glsl(
     double y_degrees_squared = y_degrees * y_degrees;
-    double u = 3.4610923509293134e-58;
-    u = u * y_degrees_squared + -1.5769148644800835e-53;
-    u = u * y_degrees_squared + 3.2614389778678079e-49;
-    u = u * y_degrees_squared + -4.0419356089559425e-45;
-    u = u * y_degrees_squared + 3.3400810865720711e-41;
-    u = u * y_degrees_squared + -1.9384919158744696e-37;
-    u = u * y_degrees_squared + 8.109756477389658e-34;
-    u = u * y_degrees_squared + -2.4706635166875875e-30;
-    u = u * y_degrees_squared + 5.4743860481394333e-27;
-    u = u * y_degrees_squared + -8.7044049318367135e-24;
-    u = u * y_degrees_squared + 9.7754101107915972e-21;
-    u = u * y_degrees_squared + -6.728626361457436e-18;
-    u = u * y_degrees_squared + 9.438525614268527e-15;
-    u = u * y_degrees_squared + 6.6543759286927401e-11;
-    u = u * y_degrees_squared + 8.8621455747926686e-7;
-    u = u * y_degrees_squared + 1.7453288065056974e-2;
+    double u = 3.4610923509293134e-58LF;
+    u = u * y_degrees_squared + -1.5769148644800835e-53LF;
+    u = u * y_degrees_squared + 3.2614389778678079e-49LF;
+    u = u * y_degrees_squared + -4.0419356089559425e-45LF;
+    u = u * y_degrees_squared + 3.3400810865720711e-41LF;
+    u = u * y_degrees_squared + -1.9384919158744696e-37LF;
+    u = u * y_degrees_squared + 8.109756477389658e-34LF;
+    u = u * y_degrees_squared + -2.4706635166875875e-30LF;
+    u = u * y_degrees_squared + 5.4743860481394333e-27LF;
+    u = u * y_degrees_squared + -8.7044049318367135e-24LF;
+    u = u * y_degrees_squared + 9.7754101107915972e-21LF;
+    u = u * y_degrees_squared + -6.728626361457436e-18LF;
+    u = u * y_degrees_squared + 9.438525614268527e-15LF;
+    u = u * y_degrees_squared + 6.6543759286927401e-11LF;
+    u = u * y_degrees_squared + 8.8621455747926686e-7LF;
+    u = u * y_degrees_squared + 1.7453288065056974e-2LF;
     double log_tan = y_degrees * u;
     return (log_tan + uProjectionViewProjMatrix[2][1]) * uProjectionViewProjMatrix[1][1] * double(viewport.height);
 )glsl");
