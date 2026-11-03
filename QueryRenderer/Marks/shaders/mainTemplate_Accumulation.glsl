@@ -7,7 +7,10 @@
 // main() implementation for accumulation (mainTemplate_Accumulation.glsl)
 //
 #define numAccumTextures_<name> <numAccumTextures>
-layout(r32ui) uniform coherent restrict uimage2DArray inTxArrayPixelCounter;
+// Not coherent: this shader only ever accesses the image atomically, and atomics are
+// coherent already; the passes that read it back are ordered by barriers. Slang
+// rejects an atomic on an image declared coherent.
+layout(r32ui) uniform restrict uimage2DArray inTxArrayPixelCounter;
 
 // stub
 void accumulate() {}

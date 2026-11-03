@@ -4,7 +4,9 @@
  */
 
 layout(r32ui) uniform restrict readonly uimage2D srcAccumTx;
-layout(r32ui) uniform restrict coherent uimage2DArray inTxArrayPixelCounter;
+// Not coherent: the image is only ever accessed atomically, and atomics are coherent
+// already. Slang rejects an atomic on an image declared coherent.
+layout(r32ui) uniform restrict uimage2DArray inTxArrayPixelCounter;
 
 layout(push_constant) uniform ACCUMULATION_COMPOSITE_PUSH_CONSTANTS {
   int layerIndex;
