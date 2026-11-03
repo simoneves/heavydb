@@ -570,6 +570,37 @@ TEST_F(GeneralShaderCompilerTest, ShaderRedecoratorClashTest) {
   }
 }
 
+TEST_F(GeneralShaderCompilerTest, CreateCacheTest) {
+  // createCache is the single-builder path, and the FromFile cases go through
+  // createCacheVector, so nothing else here exercises it. Its
+  // one live caller is saveArtifacts, which reads only the GLSL and the SPIR-V, so a
+  // regression here would surface as missing artifacts rather than as a test failure.
+  auto builder =
+      this->shaderMgr->createBuilder("ShaderCompilerTests/shaderRedecoratorTest.vert");
+  ASSERT_NE(builder, nullptr);
+
+  ShaderCacheShPtr cache;
+  ASSERT_NO_THROW(cache = this->shaderMgr->createCache(std::move(builder)));
+  ASSERT_NE(cache, nullptr);
+
+  // What saveArtifacts actually consumes
+  EXPECT_FALSE(cache->getGlsl().empty());
+  ASSERT_FALSE(cache->getSpirv().empty());
+
+  auto const [spirv_valid, validation_messages] = validate_spirv(cache->getSpirv());
+  EXPECT_TRUE(spirv_valid) << validation_messages;
+
+  // The reflection is empty by design, createCache passing no redecorator to buildSpirv,
+  // as ShaderManager.h says of it. Pinned because the method looks like createCacheVector
+  // and returns a cache that would appear complete to anyone who did not read that note:
+  // if this ever stops being true it should be a deliberate change rather than a
+  // surprise.
+  auto const& reflection = cache->getReflection();
+  EXPECT_TRUE(reflection.getAllUniformBufferNames().empty());
+  EXPECT_TRUE(reflection.getAllSamplerNames().empty());
+  EXPECT_FALSE(reflection.hasVertexAttr("in_position"));
+}
+
 }  // namespace ShaderCompilerTests
 
 int main(int argc, char* argv[]) {
