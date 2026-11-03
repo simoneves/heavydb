@@ -194,12 +194,13 @@ class ShaderManager : boost::noncopyable {
     // Append a sub-builder to allow appending a dynamic template with internal operators
     void appendSubBuilder(std::shared_ptr<Builder> sub_builder);
 
-    // Add a subroutine binding.
-    // Required bindings will trigger an error if the subroutine is not found in the
-    // shader. Subroutine bindings are resolved after the operator list is processed and
-    // all substitutions and injections have been performed. Substitution happens after
-    // parsing of the glsl but before creation of the Spirv binary (by manipulating the
-    // call graph in the parse tree).
+    // Add a subroutine binding: every call to `call` is retargeted to `target`.
+    // Required bindings will trigger an error if the target is not defined in the
+    // shader or its includes. Subroutine bindings are resolved after the operator list
+    // is processed and all substitutions and injections have been performed, by
+    // rewriting the calls in the assembled GLSL before it is compiled. All of a
+    // builder's bindings apply at once, so a call is retargeted at most once and
+    // bindings never chain.
     void addSubroutineBinding(std::string call, std::string target, bool is_required);
 
     // Set external uniform buffers

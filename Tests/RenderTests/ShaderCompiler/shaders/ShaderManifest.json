@@ -41,6 +41,20 @@
       "internal_path": "ShaderCompilerTests/",
       "language": "glsl",
       "class": "fragment"
+    },
+    {
+      "filename": "subroutineSwapTest.vert",
+      "file_path": ".",
+      "internal_path": "ShaderCompilerTests/",
+      "language": "glsl",
+      "class": "vertex"
+    },
+    {
+      "filename": "subroutinePrototypeTest.vert",
+      "file_path": ".",
+      "internal_path": "ShaderCompilerTests/",
+      "language": "glsl",
+      "class": "vertex"
     }
   ]
 }
