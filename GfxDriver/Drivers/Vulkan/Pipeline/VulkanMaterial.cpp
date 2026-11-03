@@ -105,6 +105,8 @@ void VulkanMaterial::createDescriptorResources() {
     kCOUNT
   };
 
+  // The pool holds the one set, so each type needs a descriptor per array element of
+  // every binding of that type, not one per binding
   std::array<VkDescriptorPoolSize, DescriptorPools::kCOUNT> pool_sizes{
       {{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0},
        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0},
@@ -186,7 +188,7 @@ void VulkanMaterial::createDescriptorResources() {
       auto array_size = reflection.getSamplerArraySize(name);
       if (add_layout_binding_for(
               name, binding, array_size, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)) {
-        pool_sizes[DescriptorPools::kCombinedImageSampler].descriptorCount++;
+        pool_sizes[DescriptorPools::kCombinedImageSampler].descriptorCount += array_size;
       }
     }
 
@@ -196,7 +198,7 @@ void VulkanMaterial::createDescriptorResources() {
       auto array_size = reflection.getStorageImageArraySize(name);
       if (add_layout_binding_for(
               name, binding, array_size, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)) {
-        pool_sizes[DescriptorPools::kStorageImage].descriptorCount++;
+        pool_sizes[DescriptorPools::kStorageImage].descriptorCount += array_size;
       }
     }
 
@@ -206,7 +208,7 @@ void VulkanMaterial::createDescriptorResources() {
       auto array_size = reflection.getAccelerationStructureSize(name);
       if (add_layout_binding_for(
               name, binding, array_size, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR)) {
-        pool_sizes[kAccelerationStructure].descriptorCount++;
+        pool_sizes[kAccelerationStructure].descriptorCount += array_size;
       }
     }
   }
