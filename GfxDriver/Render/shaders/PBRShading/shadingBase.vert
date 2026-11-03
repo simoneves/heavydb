@@ -18,7 +18,7 @@ layout(location = 3) out vec3 out_normal;     // interpolated normal in world sp
 layout(location = 4) flat out int out_instance_index; // gl_InstanceIndex to look up instance params in fragment shader
 
 // SSBO containing instance positions (xyz) and uniform scale (w)
-layout(std430 /*binding = 0*/) buffer INSTANCE_DATA_SSBO {
+layout(std430 /*binding = 0*/) readonly buffer INSTANCE_DATA_SSBO {
   vec4 instanceData[];
 };
 

@@ -9,7 +9,7 @@ layout(std430) uniform PPLL_TEST_UBO_TYPE {
   mat4 viewTM;
 };
 
-layout(std430) buffer PPLL_TEST_SSBO_TYPE {
+layout(std430) readonly buffer PPLL_TEST_SSBO_TYPE {
     vec4 sphereData[];
 };
 
