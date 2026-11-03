@@ -8,7 +8,7 @@ Note that reflection covers the shader interface, not the contents of function b
 
 * The Manual dataset files are created by loading the matching vega into vega-editor and producing the required artifacts. These could be replaced with more comprehensive coverage files based on be-render-tests.
 * The Renderer dataset files are the non-dynamic shaders created during server startup.
-* The Inline dataset holds results only: its shaders are written in the test source itself, or loaded from the material that owns them, and each stage's `.reflect` is named after its test (and material, where there is one). These were written from glslang's reflection while both compilers were built, so Slang stays held to glslang's answer after glslang is removed. `--regenerate-reflect` writes them from the reference compiler only.
+* The Inline dataset holds results only: its shaders are written in the test source itself, or loaded from the material that owns them, and each stage's `.reflect` is named after its test (and material, where there is one). These were first written from glslang's reflection while both compilers were built, so Slang is held to glslang's answer. `--regenerate-reflect` now writes Slang's own, so a regenerated diff here is a change from what glslang produced.
 
 Fast symbol Manual files are generated via 2 different builder files:
 * `FastSymbolTest.json` vega generates `fastSymbolTemplate.vert.builder` and `fastSymbolTemplate.frag.builder`
