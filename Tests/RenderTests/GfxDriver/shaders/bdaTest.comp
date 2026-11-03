@@ -3,25 +3,26 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#extension GL_EXT_buffer_reference2 : require
-
 #define WIDTH 100
 #define HEIGHT 1
 #define WORKGROUP_SIZE 32
 
 layout (local_size_x = WORKGROUP_SIZE, local_size_y = WORKGROUP_SIZE, local_size_z = 1) in;
 
-// Every block holds 64-bit values, so an access through one must be 8-byte aligned
-layout(buffer_reference, std430, buffer_reference_align = 8) buffer BufferPointer {
-  uint64_t p[];
+// Slang has no buffer_reference, so each reference type is a struct holding a pointer
+// to the physical storage buffer address, which Type(address).member[i] reads and
+// writes as buffer_reference would.
+struct BufferPointer {
+  uint64_t* p;
+  __init(uint64_t address) { p = (uint64_t*)address; }
 };
-
-layout(buffer_reference, std430, buffer_reference_align = 8) buffer BufferInt64 {
-  int64_t i[];
+struct BufferInt64 {
+  int64_t* i;
+  __init(uint64_t address) { i = (int64_t*)address; }
 };
-
-layout(buffer_reference, std430, buffer_reference_align = 8) buffer BufferDouble {
-  double d[];
+struct BufferDouble {
+  double* d;
+  __init(uint64_t address) { d = (double*)address; }
 };
 
 layout(push_constant, std430) uniform Registers

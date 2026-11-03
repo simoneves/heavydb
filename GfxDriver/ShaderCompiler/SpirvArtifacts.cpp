@@ -113,8 +113,8 @@ namespace {
 
 // Replaces glslang's spv::Disassemble, which came from a private header.
 // Friendly names reproduce what that one did by default, printing OpName
-// strings in place of raw result ids. The target environment has to track what
-// GlslangWrapper asks glslang to emit, or newer opcodes fail to disassemble.
+// strings in place of raw result ids. The target environment has to track the SPIR-V
+// the compiler emits, or newer opcodes fail to disassemble.
 void write_disassembly(std::ostream& stream, const spirv_t& spirv) {
   spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_3);
   tools.SetMessageConsumer([](spv_message_level_t,

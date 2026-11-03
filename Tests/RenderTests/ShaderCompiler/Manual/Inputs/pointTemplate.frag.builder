@@ -4,7 +4,7 @@
     {
       "name": "kReplaceFirstTag",
       "string1": "FragmentShaderInputs",
-      "string2": "FragmentShaderInputs {\n  layout (location = 0) flat uint64_t fRowId;\n  layout (location = 1) flat vec4 fColor;\n  layout (location = 2) flat float fPointSize;\n}",
+      "string2": "layout (location = 0) FragmentShaderInputs {\n  flat uint64_t fRowId;\n  flat vec4 fColor;\n  flat float fPointSize;\n}",
       "required": false
     },
     {

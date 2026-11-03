@@ -298,6 +298,10 @@ class ShaderCompilerTest : public GTEST_BASE {
     auto const& spirv_gen = caches[0]->getSpirv();
     ASSERT_FALSE(spirv_gen.empty()) << "No SPIR-V generated for " << testName;
 
+    // SPIR-V 1.6, which every pipeline is created for
+    ASSERT_GT(spirv_gen.size(), size_t(1));
+    EXPECT_EQ(spirv_gen[1], 0x00010600u) << "SPIR-V version word";
+
     auto const [spirv_valid, validation_messages] = validate_spirv(spirv_gen);
     EXPECT_TRUE(spirv_valid) << "spirv-val rejected " << testName << ":\n"
                              << validation_messages;
@@ -431,9 +435,28 @@ TEST_F(GeneralShaderCompilerTest, InterfaceBlockLocationTest) {
   EXPECT_NE(wide_block.find("layout (location = 2) float fLast"), std::string::npos)
       << wide_block;
 
-  // Geometry inputs are loose variables, unchanged
-  auto const geometry = single.createInterfaceBlockString(true, std::nullopt, true);
-  EXPECT_NE(geometry.find("layout (location = 1)"), std::string::npos) << geometry;
+  // The Slang struct, for geometry and mesh stages, gives each member the location the
+  // block does, leads with the position, and lists the members for the shader to mirror
+  auto const slang_struct = single.createSlangStructString(true);
+  EXPECT_EQ(slang_struct,
+            "struct FragmentShaderInputs {\n"
+            "  float4 gl_Position : SV_Position;\n"
+            "  [[vk::location(0)]] nointerpolation uint64_t fRowId;\n"
+            "  [[vk::location(1)]] vec4 fColor;\n"
+            "  [[vk::location(2)]] float fSize;\n"
+            "};\n"
+            "#define FragmentShaderInputs_MEMBERS(X) X(uint64_t, fRowId) X(vec4, fColor) "
+            "X(float, fSize)\n");
+  // A mesh shader drawing points writes the point size too
+  auto const point_struct = single.createSlangStructString(true, std::nullopt, true);
+  EXPECT_NE(point_struct.find("  float4 gl_Position : SV_Position;\n"
+                              "  float gl_PointSize : SV_PointSize;\n"
+                              "  [[vk::location(0)]]"),
+            std::string::npos)
+      << point_struct;
+  auto const wide_struct = wide.createSlangStructString(true);
+  EXPECT_NE(wide_struct.find("[[vk::location(2)]] float fLast"), std::string::npos)
+      << wide_struct;
 }
 
 //
@@ -458,6 +481,9 @@ TEST_F(GeneralShaderCompilerTest, DISABLED_SubBuilderTest) {
 //
 
 TEST_F(GeneralShaderCompilerTest, ShaderRedecoratorTest) {
+  // A material's reflection, as built from Slang's layout and checked against what
+  // ShaderRedecorator reads from its SPIR-V, with the bindings Slang assigns
+
   // create and decorate
   ShaderCacheShPtrVector caches;
   // Assert rather than expect: everything below indexes into caches, so carrying on
@@ -518,8 +544,8 @@ TEST_F(GeneralShaderCompilerTest, ShaderRedecoratorTest) {
   // unnoticed.
   //
 
-  // Everything lands in set 0. No shader declares an explicit set, and glslang's
-  // resolver assigns 0 in the absence of one.
+  // Everything lands in set 0. No shader declares an explicit set, and the reflection
+  // rejects any other.
   for (auto const* refl : {&vert_refl, &frag_refl}) {
     for (auto const& name : refl->getAllSamplerNames()) {
       EXPECT_EQ(refl->getSamplerSet(name), 0) << name;
@@ -679,10 +705,12 @@ TEST_F(GeneralShaderCompilerTest, ShaderRedecoratorTest) {
   EXPECT_TRUE(frag_refl.hasShaderStorageBufferAttr("frag_ssbo_values"));
   EXPECT_TRUE(frag_refl.hasShaderStorageBufferAttr("frag_shared_ssbo_values"));
 
-  // in_position declares no location, so glslang's resolver gives it the first free
-  // one. Only the vertex stage records vertex attributes.
+  // in_position declares no location, so Slang gives it one after every location the
+  // stage declares, its outputs at 0 and 1 included, where glslang gave it 0. Either
+  // works, since vertex attributes are bound at whatever location is reflected. Only
+  // the vertex stage records vertex attributes.
   EXPECT_TRUE(vert_refl.hasVertexAttr("in_position"));
-  EXPECT_EQ(vert_refl.getVertexAttrLocation("in_position"), 0);
+  EXPECT_EQ(vert_refl.getVertexAttrLocation("in_position"), 2);
   EXPECT_EQ(vert_refl.getVertexAttrArraySize("in_position"), 1);
   EXPECT_FALSE(frag_refl.hasVertexAttr("in_position"));
 
@@ -741,6 +769,63 @@ TEST_F(GeneralShaderCompilerTest, CreateCacheTest) {
   EXPECT_TRUE(reflection.getAllUniformBufferNames().empty());
   EXPECT_TRUE(reflection.getAllSamplerNames().empty());
   EXPECT_FALSE(reflection.hasVertexAttr("in_position"));
+}
+
+TEST_F(GeneralShaderCompilerTest, UnlocatedVaryingTest) {
+  // Compile a pair of shaders whose varyings have no explicit location and are declared
+  // in a different order in each stage. Slang assigns a location from a counter, so
+  // the two stages would agree only by luck of declaration order and nothing downstream
+  // would notice a mismatch, the renderer simply reading the wrong varying. So this has
+  // to fail the compile.
+  //
+  // Slang cannot tell an explicit location from one it assigned, so this is checked
+  // by matching each stage's inputs against the outputs of the stage before. Where
+  // Slang puts each varying is its own business, so only the names are asserted.
+  std::vector<std::string> const named(
+      {"disagree about their varyings", "in_colour", "out_alpha"});
+  try {
+    this->shaderMgr->createCacheVectorFromTemplate(
+        {{"ShaderCompilerTests/unlocatedVaryingTest.vert"},
+         {"ShaderCompilerTests/unlocatedVaryingTest.frag"}});
+    FAIL() << "Expected the unlocated varyings to throw";
+  } catch (const std::runtime_error& e) {
+    // The message has to name the varying, since that is the whole of the fix
+    std::string const message(e.what());
+    for (auto const& expected : named) {
+      EXPECT_NE(message.find(expected), std::string::npos) << message;
+    }
+
+    // Both shaders also leave a location off in_position and color, which are exempt:
+    // a vertex input and a fragment output are matched against the reflection rather
+    // than against another stage. Reporting either would be a false positive, and the
+    // vertex case would reject most of the shader library.
+    EXPECT_EQ(message.find("in_position"), std::string::npos) << message;
+
+    // The implicit output block of every vertex shader. Its members are built-in and
+    // declare no locations, so reporting it would reject every vertex shader there is.
+    EXPECT_EQ(message.find("gl_PerVertex"), std::string::npos) << message;
+  }
+}
+
+TEST_F(GeneralShaderCompilerTest, LinkFailureInLaterStageTest) {
+  // The fragment shader parses but has no main, which is rejected only when the
+  // entry point is looked for. A failure anywhere stops the whole material, so the vertex
+  // stage is left with no SPIR-V either, and it is the first stage the caller reports on.
+  // The fragment shader's link error has to reach the caller all the same, rather than a
+  // generic complaint about the vertex shader, which has nothing wrong with it.
+  //
+  try {
+    this->shaderMgr->createCacheVectorFromTemplate(
+        {{"ShaderCompilerTests/linkFailureTest.vert"},
+         {"ShaderCompilerTests/linkFailureTest.frag"}});
+    FAIL() << "Expected the fragment shader to fail to link";
+  } catch (const std::runtime_error& e) {
+    std::string const message(e.what());
+    EXPECT_NE(message.find("linkFailureTest.frag"), std::string::npos) << message;
+    EXPECT_NE(message.find("no function found matching entry point"), std::string::npos)
+        << message;
+    EXPECT_EQ(message.find("Error generating Spir-V"), std::string::npos) << message;
+  }
 }
 
 TEST_F(GeneralShaderCompilerTest, PushConstantSharedNameTest) {
@@ -1191,6 +1276,91 @@ void main() {
                        reflection_to_string(results.reflections[0]) +
                            execution_modes(results.stages[0].first),
                        false);
+}
+
+TEST_F(GeneralShaderCompilerTest, SlangCompilerTest) {
+  // Every material is compiled by Slang. The generator word of a SPIR-V header says
+  // which compiler produced it.
+  constexpr uint32_t kSlangGenerator = 40;
+  auto const caches = this->shaderMgr->createCacheVectorFromTemplate(
+      {{"ShaderCompilerTests/slangSelectionTest.vert"}});
+  ASSERT_EQ(caches.size(), size_t(1));
+  auto const& spirv = caches[0]->getSpirv();
+  ASSERT_GT(spirv.size(), size_t(2));
+  EXPECT_EQ(spirv[2] >> 16, kSlangGenerator);
+}
+
+TEST_F(GeneralShaderCompilerTest, SlangUnreachedMaterialsTest) {
+  // Production materials that be-render-tests cannot reach, built through the real
+  // pipeline: each must compile through Slang and reflect as it did through glslang.
+  constexpr uint32_t kSlangGenerator = 40;
+  // The table function test's and the WSI tests' shaders, which this library lacks
+  auto& library = this->shaderMgr->getLibrary();
+  library.addFromManifestFile(
+      "ShaderManifest.json",
+      std::string(GFX_DRIVER_PATH) +
+          "../QueryEngine/TableFunctions/SystemFunctions/shaders/");
+  library.addFromManifestFile("ShaderManifest.json",
+                              std::string(RENDER_TESTS_PATH) + "GfxWSI/shaders/");
+  // Each material's templates, and the tags its owner fills in all of them
+  struct UnreachedMaterial {
+    std::string label;
+    std::vector<std::string> names;
+    std::vector<std::pair<std::string, std::string>> tags;
+  };
+  // clang-format off
+  std::vector<UnreachedMaterial> const materials({
+      // Need a second GPU
+      {"peerAccumulation",
+       {"Rendering/fullScreenTriangle.vert", "Rendering/accumulationCompositePeer.frag"}, {}},
+      {"compositeIDs",
+       {"Rendering/multiGpuCompositeIDs.comp"},
+       {{"numSamples", "1"}, {"doMultiSample", "0"}, {"workgroupSize", "32"}}},
+      {"compositeIDsMultisampled",
+       {"Rendering/multiGpuCompositeIDs.comp"},
+       {{"numSamples", "4"}, {"doMultiSample", "1"}, {"workgroupSize", "32"}}},
+      // A system table function's render test, which nothing here calls
+      {"tableFunction",
+       {"TableFunctions/tableFunctionTest.vert", "TableFunctions/tableFunctionTest.frag"}, {}},
+      // Windowed: GfxWSITest is not built without a display, and the ImGui overlay is
+      // only drawn there
+      {"wsiGradient",
+       {"WSITests/fullScreenTriangle.vert", "WSITests/wsiTestGradient.frag"}, {}},
+      {"wsiBackground",
+       {"WSITests/fullScreenTriangle.vert", "WSITests/background.frag"}, {}},
+      {"imgui", {"ImGui/imgui_shader.vert", "ImGui/imgui_shader.frag"}, {}},
+  });
+  // clang-format on
+  auto const build = [this](const UnreachedMaterial& material) {
+    std::vector<ShaderManager::Builder::ConstructionArgs> params;
+    for (auto const& name : material.names) {
+      params.push_back({name});
+    }
+    auto builders = this->shaderMgr->createBuilderVector(params);
+    for (auto& builder : builders) {
+      for (auto const& [tag, value] : material.tags) {
+        builder->replaceFirstTag(tag, value);
+      }
+    }
+    return this->shaderMgr->createCacheVector(std::move(builders));
+  };
+  for (auto const& material : materials) {
+    auto const& names = material.names;
+    auto const by_slang = build(material);
+    ASSERT_EQ(by_slang.size(), names.size());
+    for (size_t i = 0; i < names.size(); ++i) {
+      auto const& spirv = by_slang[i]->getSpirv();
+      ASSERT_GT(spirv.size(), size_t(2)) << names[i];
+      EXPECT_EQ(spirv[2] >> 16, kSlangGenerator) << names[i];
+      auto const [spirv_valid, validation_messages] = validate_spirv(spirv);
+      EXPECT_TRUE(spirv_valid) << names[i] << ":\n" << validation_messages;
+      auto const golden = material.label + "." + names[i].substr(names[i].find('/') + 1);
+      expect_inline_golden(
+          golden,
+          reflection_to_string(by_slang[i]->getReflection()) + execution_modes(spirv),
+          false);
+    }
+  }
 }
 
 TEST_F(GeneralShaderCompilerTest, SlangMaterialBindingTest) {

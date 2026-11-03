@@ -1,0 +1,18 @@
+vertex_attrs 3
+  "aColor" set=-1 location=2 offset=-1 array_size=1 array_length=-1 array_stride=-1
+  "aPos" set=-1 location=0 offset=-1 array_size=1 array_length=-1 array_stride=-1
+  "aUV" set=-1 location=1 offset=-1 array_size=1 array_length=-1 array_stride=-1
+samplers 0
+storage_images 0
+uniform_buffers 0
+shader_storage_buffers 0
+acceleration_structures 0
+uniform_buffer_attrs 0
+shader_storage_buffer_attrs 0
+push_constants 2
+  "pc" set=-1 binding=-1 offset=0 size=16 array_length=-1 array_stride=-1
+  "uPushConstant" set=-1 binding=-1 offset=0 size=16 array_length=-1 array_stride=-1
+push_constant_attrs 2
+  "uScale" set=-1 binding=-1 offset=0 size=8 array_length=-1 array_stride=-1
+  "uTranslate" set=-1 binding=-1 offset=8 size=8 array_length=-1 array_stride=-1
+fragment_output_locations 0

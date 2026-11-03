@@ -278,8 +278,8 @@ class ShaderManager : boost::noncopyable {
   BuilderUqPtr cloneBuilder(const Builder& src) const;
   BuilderUqPtrVector cloneBuilderVector(const BuilderUqPtrVector& src) const;
 
-  // Process operators, invoke glslang, and return a spirv binary suitable for final
-  // specialization.
+  // Process operators, invoke the compiler, and return a spirv binary suitable for
+  // final specialization.
   ShaderCacheShPtrVector createCacheVector(BuilderUqPtrVector&& builders,
                                            bool save_artifacts = false) const;
 
@@ -315,7 +315,9 @@ class ShaderManager : boost::noncopyable {
   ShaderArtifactTypeBits always_save_artifacts_;
   std::string artifact_path_;
 
-  ShaderCompilerBackendUqPtr compiler_backend_;
+  // The compiler every material is compiled by. It holds a reference to the library,
+  // so is recreated with it.
+  ShaderCompilerBackendUqPtr backend_;
 
   void processOperators(Builder& builder,
                         SubroutineMap* rebind_map,
@@ -332,9 +334,9 @@ class ShaderManager : boost::noncopyable {
 
   void rebindSubroutineCalls(Builder& builder, const SubroutineMap& rebind_map) const;
 
-  // Process operators, invoke glslang, and return a spirv binary suitable for final
+  // Process operators, invoke the compiler, and return a spirv binary suitable for final
   // specialization, for every stage of one material. The stages are compiled together
-  // because glslang assigns their I/O across the material rather than per stage.
+  // because Slang lays out their bindings across the material rather than per stage.
   ShaderCacheShPtrVector buildSpirv(BuilderUqPtrVector& builders,
                                     ShaderRedecorator* shader_redecorator,
                                     bool save_artifacts = false) const;

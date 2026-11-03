@@ -32,7 +32,9 @@ coherent layout (std430) buffer PPLL_RECORDS_SSBO {
 };
 
 layout(push_constant) uniform PPLL_CAPTURE_FRAG_PUSH_CONSTANTS {
-  layout(offset = tileIndexOffset) uint32_t tileIndex;
+  // Slang rejects layout(offset) on a block member and takes the attribute instead.
+  // Both place tileIndex at the same offset, after the vertex stage's range.
+  [[vk::offset(tileIndexOffset)]] uint32_t tileIndex;
 } pushConstants;
 
 // "Allocate" an index to use for the next record. Reserve width*height
@@ -56,7 +58,10 @@ uint32_t allocIndex(uint32_t list_head_region_size) {
 #define COUNT_MASK(x)           ((x) & 0x00FFFFFFU)
 #endif
 
-void main(void) {
+// Slang's GLSL support has no gl_SampleMaskIn, so under Slang the input sample mask
+// arrives as an SV_Coverage parameter of main instead. Both are the SampleMask built-in.
+void main(uint sample_mask_in : SV_Coverage) {
+#define SAMPLE_MASK_IN int(sample_mask_in)
   ivec2 P = ivec2(gl_FragCoord.xy);
   uint32_t fragment_count = imageLoad(fragment_count_image, P).r;
   uint32_t tile_index = pushConstants.tileIndex;
@@ -65,7 +70,7 @@ void main(void) {
   uint32_t list_head_region_size = tiles[tile_index].w * tiles[tile_index].h;
 
   // strip already completed samples from the sample mask (batching)
-  int out_sample_mask = gl_SampleMaskIn[0] & ~SM_BITS(fragment_count);
+  int out_sample_mask = SAMPLE_MASK_IN & ~SM_BITS(fragment_count);
   // Check if any samples for this fragment are incomplete
   if (out_sample_mask != 0) {
     // Only grab a slot for "next" if the pixel has more than one fragment

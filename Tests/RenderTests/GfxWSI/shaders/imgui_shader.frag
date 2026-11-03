@@ -12,5 +12,5 @@ layout(location = 1) in vec2 UV;
 
 void main()
 {
-    fColor = Color * texture(sTexture, UV.st);
+    fColor = Color * texture(sTexture, UV.xy);
 }

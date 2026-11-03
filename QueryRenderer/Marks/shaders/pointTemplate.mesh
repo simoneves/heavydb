@@ -21,10 +21,7 @@
 #define workgroupSize <workgroupSize>
 #define workgroupSizeBits <workgroupSizeBits>
 
-layout (local_size_x = workgroupSize, local_size_y = 1, local_size_z = 1) in;
-layout (points, max_vertices = workgroupSize, max_primitives = workgroupSize) out;
-
-uint g_output_index = 0u;
+static uint g_output_index = 0u;
 
 // RenderProperty type info defines
 <RenderPropertyTypeInfos>
@@ -37,7 +34,10 @@ uint g_output_index = 0u;
 // flat uint64_t fRowId
 // flat float fPointSize
 // flat vec4 fColor
-out <FragmentShaderInputs> v_out[];
+// Slang's form of the outputs: see Slang/slangMesh.glsl
+<FragmentShaderInputsSlang>
+#define v_out slang_mesh_vertices_
+#include "Slang/slangMesh.glsl"
 
 // Uniform RenderProperties
 layout(std430) uniform <UniformProperties>;
@@ -80,8 +80,11 @@ inTy projecty(in inTy y) {
 #define useKey <useKey>
 #define IS_MULTISAMPLING <isMultiSampling>
 
-layout(buffer_reference, scalar, buffer_reference_align = 8) buffer VERTEX_DATA {
-  VertexData vertex_data[];
+// Slang has no buffer_reference, and reads the same physical storage buffer address
+// through a pointer, so VERTEX_DATA(address).vertex_data[i] is the same in either form
+struct VERTEX_DATA {
+  VertexData* vertex_data;
+  __init(uint64_t address) { vertex_data = (VertexData*)address; }
 };
 
 ////////////////////////////////////////////////////////////////
@@ -99,7 +102,9 @@ layout(std430) buffer WORK_UNITS_SSBO {
   WorkUnit items[];
 } work_units_buffer;
 
-void main() {
+[outputtopology("point")]
+[numthreads(workgroupSize, 1, 1)]
+void main(SLANG_MESH_OUTPUTS(FragmentShaderInputs, workgroupSize, uint, workgroupSize)) {
   // work unit index
   uint32_t work_unit_index = gl_WorkGroupID.x + pushConstants.firstWorkUnit;
   if (work_unit_index >= work_units_buffer.items.length()) {

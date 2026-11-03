@@ -19,6 +19,9 @@ layout(std430) uniform RAYGEN_UBO_TYPE {
 // Multiple payloads may be declared with different location decorations
 // All shaders invoked must use the same payload for each location referenced
 layout(location = 0) rayPayloadEXT vec3 hitValue;
+#include "Shading/rtTraceRay.glsl"
+#define traceRayEXT(as, flags, mask, sbt_offset, sbt_stride, miss, origin, tmin, direction, tmax, location) \
+  SLANG_TRACE_RAY(hitValue, as, flags, mask, sbt_offset, sbt_stride, miss, origin, tmin, direction, tmax)
 
 void main()
 {

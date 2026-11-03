@@ -75,7 +75,9 @@ coherent layout (std430) buffer PPLL_RECORDS_SSBO {
 
 // push constants
 layout(push_constant) uniform PPLL_CAPTURE_FRAG_PUSH_CONSTANTS {
-  layout(offset = tileIndexOffset) uint32_t tileIndex;
+  // Slang rejects layout(offset) on a block member and takes the attribute instead.
+  // Both place tileIndex at the same offset, after the vertex stage's range.
+  [[vk::offset(tileIndexOffset)]] uint32_t tileIndex;
 } pushConstants;
 
 // specialization constants

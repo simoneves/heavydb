@@ -6,7 +6,6 @@
 //<extensions>
 #extension GL_EXT_ray_tracing : require
 #extension GL_EXT_scalar_block_layout : enable
-#extension GL_EXT_buffer_reference2 : require
 //</extensions>
 
 //<includes>
@@ -35,23 +34,32 @@ struct MeshObjectDesc {
 };
 
 // Declare buffer_reference layouts required for proper element strides
-layout(buffer_reference, scalar) buffer Vertices {
-  Vertex v[];
+// Slang has no buffer_reference, so each reference type is a struct holding a pointer
+// to the physical storage buffer address, which Type(address).member[i] reads as
+// buffer_reference would.
+struct Vertices {
+  Vertex* v;
+  __init(uint64_t address) { v = (Vertex*)address; }
 };
-layout(buffer_reference, scalar) buffer Indices {
-  ivec3 i[];
+struct Indices {
+  ivec3* i;
+  __init(uint64_t address) { i = (ivec3*)address; }
 };
-layout(buffer_reference, scalar) buffer ModelTransforms {
-  mat4 mm[];
+struct ModelTransforms {
+  mat4* mm;
+  __init(uint64_t address) { mm = (mat4*)address; }
 };
-layout(buffer_reference, scalar) buffer NormalTransforms {
-  mat3 nm[];
+struct NormalTransforms {
+  mat3* nm;
+  __init(uint64_t address) { nm = (mat3*)address; }
 };
-layout(buffer_reference, scalar) buffer MeshObjectDescs {
-  MeshObjectDesc od[];
+struct MeshObjectDescs {
+  MeshObjectDesc* od;
+  __init(uint64_t address) { od = (MeshObjectDesc*)address; }
 };
-layout(buffer_reference, scalar) buffer Colors {
-  vec3 c[];
+struct Colors {
+  vec3* c;
+  __init(uint64_t address) { c = (vec3*)address; }
 };
 
 // MeshObjectDesc and Colors buffers addresses are passed using push constants for

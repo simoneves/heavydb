@@ -17,7 +17,8 @@
 // flat vec2 gPointSize[]
 // flat float gAngle (only when not uniform)
 // flat int gAccumIdx[] (accumulation render only)
-<GeometryShaderInputs>
+// Slang's form of the inputs and outputs: see Slang/slangGeometry.glsl
+<GeometryShaderInputsSlang>
 
 // Outputs
 
@@ -31,10 +32,13 @@
 // flat float fApproxMaxCoverage
 // vec2 fUV
 // flat int accumIdx (accumulation render only)
-out <FragmentShaderInputs>;
-
-layout(points) in;
-layout(triangle_strip, max_vertices = 4) out;
+<FragmentShaderInputsSlang>
+#define SLANG_GEOMETRY_IN GeometryShaderInputs
+#define SLANG_GEOMETRY_IN_MEMBERS GeometryShaderInputs_MEMBERS
+#define SLANG_GEOMETRY_IN_COUNT 1
+#define SLANG_GEOMETRY_OUT FragmentShaderInputs
+#define SLANG_GEOMETRY_OUT_MEMBERS FragmentShaderInputs_MEMBERS
+#include "Slang/slangGeometry.glsl"
 
 #define doAccumIndex <doAccumIndex>
 #define useUangle <useUangle>
@@ -52,7 +56,7 @@ layout(std430) uniform FAST_SYMBOL_GEOM_UBO_TYPE {
 #endif // useUangle
 };
 
-void processVertex() {
+void processVertex(SLANG_GEOMETRY_STREAM) {
   vec2 point_size = gPointSize[0];
 
   // Grow the point slightly in order to guarantee there are no subpixel gaps between the
@@ -149,10 +153,17 @@ void processVertex() {
   EmitVertex();
 }
 
-void main() {
+void geometry_main(SLANG_GEOMETRY_STREAM) {
   // check for garbage vertex sentinel
   if (gShapeType[0] < NUM_SYMBOL_TYPES) {
-    processVertex();
+    processVertex(SLANG_GEOMETRY_STREAM_ARG);
   }
   EndPrimitive();
+}
+
+[maxvertexcount(4)]
+void main(point GeometryShaderInputs slang_geometry_input_[1],
+          SLANG_GEOMETRY_STREAM) {
+  SLANG_GEOMETRY_LOAD_INPUTS();
+  geometry_main(SLANG_GEOMETRY_STREAM_ARG);
 }

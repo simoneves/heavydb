@@ -19,7 +19,8 @@
 // float gStrokeOpacity[]
 // int gLineJoin[]
 // float gMiterLimit[]
-<GeometryShaderInputs>
+// Slang's form of the inputs and outputs: see Slang/slangGeometry.glsl
+<GeometryShaderInputsSlang>
 
 // Outputs
 
@@ -29,10 +30,13 @@
 // flat vec4 fColor
 // flat float fOpacity
 // flat float fStrokeOpacity
-out <FragmentShaderInputs>;
-
-layout(lines_adjacency) in;
-layout(triangle_strip, max_vertices = 4) out;
+<FragmentShaderInputsSlang>
+#define SLANG_GEOMETRY_IN GeometryShaderInputs
+#define SLANG_GEOMETRY_IN_MEMBERS GeometryShaderInputs_MEMBERS
+#define SLANG_GEOMETRY_IN_COUNT 4
+#define SLANG_GEOMETRY_OUT FragmentShaderInputs
+#define SLANG_GEOMETRY_OUT_MEMBERS FragmentShaderInputs_MEMBERS
+#include "Slang/slangGeometry.glsl"
 
 struct Viewport
 {
@@ -60,7 +64,8 @@ void emitVertex(
   in vec2 pos,
   in vec2 zw,
   in vec2 norm_dist_coords,
-  in bool is_bottom_vertex) {
+  in bool is_bottom_vertex
+  SLANG_GEOMETRY_STREAM_EXTRA) {
   vec2 ndc_pos = ScreentoNDC(pos);
   if (is_bottom_vertex) {
     ndc_pos.y = -1.0;
@@ -86,7 +91,8 @@ void renderStroke(
   in float begin_line_width,
   in float end_line_width,
   in int line_join,
-  in float miter_limit) {
+  in float miter_limit
+  SLANG_GEOMETRY_STREAM_EXTRA) {
   // main segment
   vec2 segment_dir = pos2 - pos1;
   float segment_len = length(segment_dir);
@@ -95,15 +101,15 @@ void renderStroke(
     segment_dir = segment_dir / segment_len;
 
     // draw quad
-    emitVertex(pos1, zw1, NO_DIST_COORDS, false);
-    emitVertex(pos2, zw2, NO_DIST_COORDS, false);
-    emitVertex(pos1, zw1, NO_DIST_COORDS, true);
-    emitVertex(pos2, zw2, NO_DIST_COORDS, true);
+    emitVertex(pos1, zw1, NO_DIST_COORDS, false SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+    emitVertex(pos2, zw2, NO_DIST_COORDS, false SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+    emitVertex(pos1, zw1, NO_DIST_COORDS, true SLANG_GEOMETRY_STREAM_EXTRA_ARG);
+    emitVertex(pos2, zw2, NO_DIST_COORDS, true SLANG_GEOMETRY_STREAM_EXTRA_ARG);
     EndPrimitive();
   }
 }
 
-void main() {
+void geometry_main(SLANG_GEOMETRY_STREAM) {
 #if doStrokeAccum == 1
   // always draw
   {
@@ -120,6 +126,13 @@ void main() {
       gStrokeWidth[1],
       gStrokeWidth[2],
       gLineJoin[1],
-      gMiterLimit[1]);
+      gMiterLimit[1] SLANG_GEOMETRY_STREAM_EXTRA_ARG);
   }
+}
+
+[maxvertexcount(4)]
+void main(lineadj GeometryShaderInputs slang_geometry_input_[4],
+          SLANG_GEOMETRY_STREAM) {
+  SLANG_GEOMETRY_LOAD_INPUTS();
+  geometry_main(SLANG_GEOMETRY_STREAM_ARG);
 }

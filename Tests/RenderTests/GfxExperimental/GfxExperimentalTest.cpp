@@ -57,6 +57,9 @@ class GfxExperimentalTestShaderLibrary {
  public:
   static void init(Library& library) {
     library.addFromManifestFile("ShaderManifest.json", g_shaders_path);
+    // For Slang/slangMesh.glsl, which the mesh and task shaders include
+    library.addFromManifestFile("ShaderManifest.json",
+                                std::string(GFX_DRIVER_PATH) + "Render/shaders/");
   }
 };
 

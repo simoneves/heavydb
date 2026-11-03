@@ -11,7 +11,9 @@
 #include "Shading/projection.glsl"
 //</includes>
 
-uniform accelerationStructureEXT topLevelAS;
+// Bound explicitly, as every stage declaring it does: it is shared between the ray
+// generation and hit stages, and Slang matches a shared resource by binding, not name
+layout(binding = 0) uniform accelerationStructureEXT topLevelAS;
 layout(rgba8) uniform image2D outputImage;
 
 // RayPayload struct for primary and reflection rays
@@ -24,6 +26,9 @@ struct RayPayload {
 };
 
 layout(location = 0) rayPayloadEXT RayPayload rayPayload;
+#include "Shading/rtTraceRay.glsl"
+#define traceRayEXT(as, flags, mask, sbt_offset, sbt_stride, miss, origin, tmin, direction, tmax, location) \
+  SLANG_TRACE_RAY(rayPayload, as, flags, mask, sbt_offset, sbt_stride, miss, origin, tmin, direction, tmax)
 
 // Maximum recursion depth for reflection
 const int kMaxReflectionDepth = 2;

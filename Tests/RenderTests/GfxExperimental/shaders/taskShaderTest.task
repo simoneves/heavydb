@@ -1,8 +1,6 @@
-#extension GL_EXT_mesh_shader : enable
+#include "Slang/slangMesh.glsl"
 
 #define NUM_QUADS <numQuads>
-
-layout (local_size_x = NUM_QUADS, local_size_y = 1, local_size_z = 1) in;
 
 layout(std430) uniform TASK_SHADER_UBO_TYPE {
   uvec2 viewportSize;
@@ -13,8 +11,11 @@ struct TaskData
   uvec2 pixel_coord;
   uint num_quads;
 };
-taskPayloadSharedEXT TaskData td;
+// See Slang/slangMesh.glsl
+groupshared TaskData td;
+#define SLANG_TASK_PAYLOAD td
 
+[numthreads(NUM_QUADS, 1, 1)]
 void main() {
   uint workgroup_id = gl_WorkGroupID.x;
 

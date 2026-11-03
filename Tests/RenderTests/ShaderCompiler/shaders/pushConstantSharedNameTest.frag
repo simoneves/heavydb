@@ -6,7 +6,7 @@
 // The fragment half of the pair. Its block starts where the vertex shader's ends.
 
 layout(push_constant) uniform FRAG_SHARED_NAME_PUSH_CONSTANTS {
-  layout(offset = 4) uint frag_value;
+  [[vk::offset(4)]] uint frag_value;
 } pushConstants;
 
 out vec4 color;

@@ -16,6 +16,9 @@ layout(binding = 0) uniform accelerationStructureEXT topLevelAS;
 layout(rgba8, binding = 1) uniform image2D outputImage;
 
 layout(location = 0) rayPayloadEXT RayPayload rayPayload;
+#include "Shading/rtTraceRay.glsl"
+#define traceRayEXT(as, flags, mask, sbt_offset, sbt_stride, miss, origin, tmin, direction, tmax, location) \
+  SLANG_TRACE_RAY(rayPayload, as, flags, mask, sbt_offset, sbt_stride, miss, origin, tmin, direction, tmax)
 
 // Maximum recursion depth for reflection
 const int kMaxReflectionDepth = 4;

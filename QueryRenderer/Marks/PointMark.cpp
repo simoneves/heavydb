@@ -192,6 +192,11 @@ void PointMark::updateShader() {
     // WIP
     auto attr_fetch_str = buildVertexAttributeFetches();
     builders[0]->replaceFirstTag("VertexAttributeFetches", attr_fetch_str);
+
+    // The mesh shader's Slang form of its outputs, with the point size it writes
+    builders[0]->replaceFirstTag(
+        "FragmentShaderInputsSlang",
+        block_builder.createSlangStructString(true, std::nullopt, true));
   }
 
   auto build_subroutine_bindings = [&](BaseRenderPropertyConstSet& props) {

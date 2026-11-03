@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#extension GL_EXT_mesh_shader : enable
+#include "Slang/slangMesh.glsl"
 
 #include "DriverTests/testUtils.glsl"
 
@@ -11,18 +11,21 @@
 #define NUM_LOCAL_WORKGROUPS <numLocalWorkgroups>
 #define NUM_POINTS <numPoints>
 
-layout (local_size_x = NUM_LOCAL_WORKGROUPS, local_size_y = 1, local_size_z = 1) in;
-layout (points, max_vertices = NUM_LOCAL_WORKGROUPS, max_primitives = NUM_LOCAL_WORKGROUPS) out;
-
-layout (location = 0) out PerVertexData {
-  vec4 color;
-} v_out[];
+// See Slang/slangMesh.glsl
+struct PerVertexData {
+  float4 gl_Position : SV_Position;
+  float gl_PointSize : SV_PointSize;
+  [[vk::location(0)]] vec4 color;
+};
+#define v_out slang_mesh_vertices_
 
 layout(std430) uniform MESH_SHADER_UBO_TYPE {
   vec2 viewportSize;
 };
 
-void main()
+[outputtopology("point")]
+[numthreads(NUM_LOCAL_WORKGROUPS, 1, 1)]
+void main(SLANG_MESH_OUTPUTS(PerVertexData, NUM_LOCAL_WORKGROUPS, uint, NUM_LOCAL_WORKGROUPS))
 {
   uint local_workgroup_id = gl_LocalInvocationID.x;
   uint workgroup_id = gl_WorkGroupID.x;

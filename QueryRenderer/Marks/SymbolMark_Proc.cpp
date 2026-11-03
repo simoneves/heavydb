@@ -476,10 +476,11 @@ void SymbolMark_Proc::updateShader() {
   if (!useMeshShader() && do_angle) {
     builders[0]->replaceFirstTag("GeometryShaderInputs",
                                  geometry_inputs->createInterfaceBlockString(true));
-    builders[2]->replaceFirstTag(
-        "GeometryShaderInputs",
-        geometry_inputs->createInterfaceBlockString(true, std::nullopt, true));
-    builders[2]->replaceFirstTag("FragmentShaderInputs", fragment_inputs_str);
+    // The geometry shader's form of both, as Slang declares them
+    builders[2]->replaceFirstTag("GeometryShaderInputsSlang",
+                                 geometry_inputs->createSlangStructString(true));
+    builders[2]->replaceFirstTag("FragmentShaderInputsSlang",
+                                 fragment_inputs.createSlangStructString(true));
   } else {
     builders[0]->replaceFirstTag("FragmentShaderInputs", fragment_inputs_str);
   }
@@ -553,6 +554,10 @@ void SymbolMark_Proc::updateShader() {
     // WIP
     auto attr_fetch_str = buildVertexAttributeFetches();
     builders[0]->replaceFirstTag("VertexAttributeFetches", attr_fetch_str);
+
+    // The mesh shader's Slang form of its outputs
+    builders[0]->replaceFirstTag("FragmentShaderInputsSlang",
+                                 fragment_inputs.createSlangStructString(true));
   }
 
   for (auto const* prop : prop_buf_loc_state_.vbo_props) {

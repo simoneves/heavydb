@@ -35,8 +35,8 @@
 #include <rapidjson/stringbuffer.h>
 
 #include "GfxDriver/RenderError.h"
-#include "GfxDriver/ShaderCompiler/GlslangWrapper.h"
 #include "GfxDriver/ShaderCompiler/JSONSchemas.h"
+#include "GfxDriver/ShaderCompiler/SlangBackend.h"
 #include "GfxDriver/ShaderCompiler/SpirvArtifacts.h"
 #include "GfxDriver/ShaderCompiler/Types.h"
 #include "GfxDriver/TypeGLSL.h"
@@ -778,9 +778,8 @@ str_itr_range get_function_bounds(std::string& code_str, const std::string& func
 }
 
 // Finds every call to `func_name`, leaving its own declarations alone so that
-// retargeting the calls leaves the definition behind. glslang drops it during dead
-// code elimination once nothing reaches it, which is what the AST pass this replaced
-// relied on too.
+// retargeting the calls leaves the definition behind. The compiler drops it once nothing
+// reaches it, which is what the glslang AST pass this replaced relied on too.
 std::vector<size_t> find_call_sites(const std::string& code_str,
                                     const std::string& func_name) {
   std::vector<size_t> call_positions;
@@ -851,7 +850,7 @@ std::string library_item_to_filename(const Library::Item& item) {
 spirv_t optimize_spirv(const spirv_t& spirv_in) {
   spirv_t opt_spv;
   LOG(INFO) << "Optimizing Spir-V";
-  // Must track what GlslangWrapper asks glslang to emit. This whole function is
+  // Must track the SPIR-V the compiler emits. This whole function is
   // behind USE_SPIRV_OPT, which is false, so the OpenGL target it carried until
   // now had never been exercised against a Vulkan blob.
   spv_target_env env = SPV_ENV_VULKAN_1_3;
@@ -890,12 +889,13 @@ spirv_t optimize_spirv(const spirv_t& spirv_in) {
 //
 // ShaderManager
 //
+
 ShaderManager::ShaderManager(LibraryUqPtr library)
     : library_{std::move(library)}
     , can_save_artifacts_{false}
     , always_save_artifacts_{ShaderArtifactTypeBits::kNone} {
   CHECK(library_);
-  compiler_backend_ = std::make_unique<GlslangWrapper>(*library_);
+  backend_ = std::make_unique<SlangBackend>(*library_);
   library_->add("Marks/typeDefines.glsl", "glsl", "glsl", type_defines_string);
   library_->updateDictionaries();
 
@@ -918,7 +918,7 @@ ShaderManager::ShaderManager(LibraryUqPtr library)
 }
 
 ShaderManager::~ShaderManager() {
-  compiler_backend_ = nullptr;
+  backend_ = nullptr;
   library_ = nullptr;
 #if GENERATE_COMPILE_STATS
   g_stats_reporter.generateReport(std::cout);
@@ -932,8 +932,9 @@ gfx::Library& ShaderManager::getLibrary() const {
 }
 
 void ShaderManager::replaceLibrary(LibraryUqPtr library) {
+  backend_ = nullptr;
   library_ = std::move(library);
-  compiler_backend_ = std::make_unique<GlslangWrapper>(*library_);
+  backend_ = std::make_unique<SlangBackend>(*library_);
   library_->add("Marks/typeDefines.glsl", "glsl", "glsl", type_defines_string);
   library_->updateDictionaries();
 }
@@ -1120,8 +1121,8 @@ void ShaderManager::processOperators(Builder& builder,
         // usually a Scale. For example, getx() and gety() are typically replaced with
         // unique versions of quantitative scale, including UBO and sub functions. This
         // would be much better handled by simply adding these as a separate string that
-        // we feed to glslang, leaving the original function in place. We can then simply
-        // retarget the function calls to point to the new IntermAggregate node.
+        // we feed to the compiler, leaving the original function in place. We can then
+        // simply retarget the function calls to point to the new function.
         // The tricky part will be dealing with decimal or project wrapped parameters.
         // We'll need to either restructure the shaders slightly, or explore more advanced
         // IR merging.
@@ -1191,12 +1192,12 @@ void ShaderManager::processOperators(Builder& builder,
 
 // For Spirv, we generate a Glsl string and a function call replace map. This
 // encapsulates both the kReplaceFuncCall operator and subroutines. The map is applied
-// textually to the assembled source, so glslang is handed GLSL that already calls the
-// right functions.
+// textually to the assembled source, so the compiler is handed GLSL that already calls
+// the right functions.
 //
 // Every stage of the material is assembled first and then compiled in one call, so
-// that glslang can assign bindings and locations consistently across the stages
-// instead of each stage being resolved as though it were alone.
+// that Slang can assign bindings consistently across the stages instead of each stage
+// being resolved as though it were alone.
 ShaderCacheShPtrVector ShaderManager::buildSpirv(BuilderUqPtrVector& builders,
                                                  ShaderRedecorator* shader_redecorator,
                                                  bool save_artifacts) const {
@@ -1222,10 +1223,9 @@ ShaderCacheShPtrVector ShaderManager::buildSpirv(BuilderUqPtrVector& builders,
                                   builder.subroutine_map_.end());
 
     // Build GLSL string and function bindings
-    // TODO(scb): multi-string support in glslangWrapper
     processOperators(builder, &func_rebind_map, false);
 
-    // Apply the bindings to the assembled source, before glslang ever sees it
+    // Apply the bindings to the assembled source, before the compiler ever sees it
     rebindSubroutineCalls(builder, func_rebind_map);
 
 #if GENERATE_COMPILE_STATS
@@ -1242,9 +1242,11 @@ ShaderCacheShPtrVector ShaderManager::buildSpirv(BuilderUqPtrVector& builders,
   start_time = timer_start();
 #endif
 
+  auto& backend = *backend_;
+
   // Generate spirv
   auto const compile_start = std::chrono::steady_clock::now();
-  auto compile_results = compiler_backend_->compileMaterial(stage_sources);
+  auto compile_results = backend.compileMaterial(stage_sources);
   CHECK_EQ(compile_results.stages.size(), builders.size());
   // At debug level 1 only. Shows the compiler's cost on a real workload.
   VLOG(1) << "Compiled " << stage_sources.size() << " stage(s) in "
@@ -1284,9 +1286,13 @@ ShaderCacheShPtrVector ShaderManager::buildSpirv(BuilderUqPtrVector& builders,
 
     // populate reflection here?
     if (shader_redecorator && !compile_result.first.empty()) {
-      // build reflection
-      shader_redecorator->redecorate(
-          compile_result.first, reflection, builder.getTemplateName());
+      // build reflection, unless the backend reflected the material itself
+      if (!compile_results.reflections.empty()) {
+        reflection = std::move(compile_results.reflections[stage_index]);
+      } else {
+        shader_redecorator->redecorate(
+            compile_result.first, reflection, builder.getTemplateName());
+      }
 
       // validate presence of specified external uniform buffers
       for (auto const& name : builder.external_uniform_buffer_names_) {
@@ -1343,7 +1349,7 @@ ShaderCacheShPtrVector ShaderManager::buildSpirv(BuilderUqPtrVector& builders,
           did_warn = true;
         }
 #else
-        auto basename = library_item_to_filename(builder.root_item_);
+        auto const basename = library_item_to_filename(builder.root_item_);
         if (ShaderArtifactTypeBits::kBuilder & artifacts_to_save) {
           serializeBuilder(builder, basename);
         }

@@ -1,6 +1,20 @@
 {
   "sources": [
     {
+      "filename": "slangMesh.glsl",
+      "file_path": "./Slang/",
+      "internal_path": "Slang/",
+      "language": "glsl",
+      "class": "glsl"
+    },
+    {
+      "filename": "slangGeometry.glsl",
+      "file_path": "./Slang/",
+      "internal_path": "Slang/",
+      "language": "glsl",
+      "class": "glsl"
+    },
+    {
       "filename": "projection.glsl",
       "file_path": "./",
       "internal_path": "Shading/",
@@ -135,6 +149,13 @@
     },
     {
       "filename": "rtUtils.glsl",
+      "file_path": "./Raytracing/",
+      "internal_path": "Shading/",
+      "language": "glsl",
+      "class": "glsl"
+    },
+    {
+      "filename": "rtTraceRay.glsl",
       "file_path": "./Raytracing/",
       "internal_path": "Shading/",
       "language": "glsl",
