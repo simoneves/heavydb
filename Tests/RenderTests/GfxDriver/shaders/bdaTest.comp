@@ -11,15 +11,16 @@
 
 layout (local_size_x = WORKGROUP_SIZE, local_size_y = WORKGROUP_SIZE, local_size_z = 1) in;
 
-layout(buffer_reference, std430, buffer_reference_align = 4) buffer BufferPointer {
+// Every block holds 64-bit values, so an access through one must be 8-byte aligned
+layout(buffer_reference, std430, buffer_reference_align = 8) buffer BufferPointer {
   uint64_t p[];
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 4) buffer BufferInt64 {
+layout(buffer_reference, std430, buffer_reference_align = 8) buffer BufferInt64 {
   int64_t i[];
 };
 
-layout(buffer_reference, std430, buffer_reference_align = 4) buffer BufferDouble {
+layout(buffer_reference, std430, buffer_reference_align = 8) buffer BufferDouble {
   double d[];
 };
 

@@ -6,6 +6,7 @@
 #include "GfxDriver/Drivers/Vulkan/VulkanDebugUtils.h"
 
 #include <string>
+#include <string_view>
 
 #include "GfxDriver/Drivers/Vulkan/VulkanPlatform.h"
 #include "GfxDriver/Drivers/Vulkan/VulkanResult.h"
@@ -56,8 +57,13 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_utils_messenger_callback_fn(
     return VK_FALSE;
   }
 
-  if (callback_data->messageIdNumber == (int)0xfd5d8e3f) {
-    // Suppress UNASSIGNED-BestPractices-PushConstants
+  // The best practices messages are matched by name: their ID numbers are derived from
+  // their names, which change between SDKs (1.4.363 dropped the UNASSIGNED- prefix)
+  std::string_view const id_name(
+      callback_data->pMessageIdName ? callback_data->pMessageIdName : "");
+
+  if (id_name == "BestPractices-PushConstants") {
+    // Suppress BestPractices-PushConstants
     // The 1.3.275 update started throwing these out in code that looks correct and has
     // been working for years. This suppression is temporary to allow moving forward with
     // the 275 SDK update while investigation continues
@@ -71,8 +77,8 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_utils_messenger_callback_fn(
     // practices suppression above)
     LOG(ERROR) << "Suppressed memory handle import size mismatch. See [GFX-355]";
     return VK_FALSE;
-  } else if (callback_data->messageIdNumber == (int)0x7bc61184) {
-    // Suppress UNASSIGNED-BestPractices-SpirvDeprecated_WorkgroupSize
+  } else if (id_name == "BestPractices-SpirvDeprecated_WorkgroupSize") {
+    // Suppress BestPractices-SpirvDeprecated_WorkgroupSize
     // See [GFX-437]
     return VK_FALSE;
   }

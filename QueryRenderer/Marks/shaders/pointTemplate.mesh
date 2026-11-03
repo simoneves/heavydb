@@ -170,8 +170,10 @@ void main() {
   v_out[g_output_index].fPointSize = sz;
   gl_MeshVerticesEXT[g_output_index].gl_PointSize = sz;
 
-  v_out[g_output_index].fColor = transformfillColorToRGB(getfillColor(fillColor));
-  v_out[g_output_index].fColor.a *= float(getopacity(opacity)) * float(getfillOpacity(fillOpacity));
+  // Composed before it is written: a mesh shader must not read back its outputs
+  vec4 fill_color = transformfillColorToRGB(getfillColor(fillColor));
+  fill_color.a *= float(getopacity(opacity)) * float(getfillOpacity(fillOpacity));
+  v_out[g_output_index].fColor = fill_color;
 
   // ids from queries go from 0 to numrows-1, but since we're storing
   // the ids as unsigned ints, and there isn't a way to specify the
